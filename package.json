@@ -16,9 +16,11 @@
     "@heroui/avatar": "2.2.26",
     "@heroui/badge": "2.2.18",
     "@heroui/button": "2.2.32",
+    "@heroui/calendar": "^2.2.32",
     "@heroui/card": "2.2.28",
     "@heroui/chip": "2.2.25",
     "@heroui/code": "2.2.25",
+    "@heroui/date-picker": "^2.3.33",
     "@heroui/divider": "2.2.24",
     "@heroui/drawer": "2.2.29",
     "@heroui/dropdown": "2.3.32",
@@ -55,13 +57,15 @@
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.0",
     "clsx": "2.1.1",
+    "date-fns": "^4.1.0",
     "framer-motion": "11.18.2",
     "intl-messageformat": "10.7.16",
     "lucide-react": "^0.577.0",
     "next": "15.5.9",
     "next-themes": "0.4.6",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "15.5.9",
