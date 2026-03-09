@@ -2,7 +2,8 @@
 CREATE TABLE public.perfiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
-  role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin'))
+  role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin')),
+  whatsapp_status TEXT DEFAULT 'disconnected' CHECK (whatsapp_status IN ('connected', 'disconnected')),
 );
 
 -- 2. Tabla de Pacientes (Clientes - No tienen acceso al sistema)
