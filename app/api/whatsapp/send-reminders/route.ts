@@ -1,8 +1,17 @@
-// Ejemplo de lógica para el endpoint
-export async function GET(request: Request) {
-  // 1. Verificar token de seguridad (el Bearer del cron)
-  // 2. Obtener reservas de mañana desde Supabase
-  // 3. Loop de mensajes a Kapso:
-  //    fetch("https://api.kapso.ai/v1/messages", { ... body: { to: telefono, text: "Hola!" } })
-  return Response.json({ success: true });
+const WHATSAPP_API_URL = 'https://api.kapso.ai/meta/whatsapp/v24.0';
+
+async function sendReminder(phoneNumberId: string, to: string, message: string) {
+  return fetch(`${WHATSAPP_API_URL}/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      'X-API-Key': process.env.KAPSO_API_KEY!,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: to,
+      type: "text",
+      text: { body: message }
+    })
+  });
 }

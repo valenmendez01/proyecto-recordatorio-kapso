@@ -14,16 +14,16 @@ export async function POST(req: Request) {
 
     // El evento 'customer.connected' se dispara cuando escanean el QR con éxito
     if (event === "customer.connected") {
-      const { external_id } = body.data; // Este es el ID de tu usuario que enviamos antes
+      // Nota: Ajusta la destructuración según el payload real de Kapso
+      const { external_customer_id, phone_number_id } = body.data;
 
-      const { error } = await supabaseAdmin
+      await supabaseAdmin
         .from("perfiles")
-        .update({ whatsapp_status: "connected" })
-        .eq("id", external_id);
-
-      if (error) throw error;
-      
-      console.log(`WhatsApp conectado para el usuario: ${external_id}`);
+        .update({ 
+          whatsapp_status: "connected",
+          whatsapp_phone_number_id: phone_number_id // Guardamos esto para enviar mensajes
+        })
+        .eq("id", external_customer_id);
     }
 
     return NextResponse.json({ received: true }, { status: 200 });

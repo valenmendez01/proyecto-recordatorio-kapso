@@ -4,6 +4,8 @@ CREATE TABLE public.perfiles (
   email TEXT UNIQUE NOT NULL,
   role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin')),
   whatsapp_status TEXT DEFAULT 'disconnected' CHECK (whatsapp_status IN ('connected', 'disconnected')),
+  whatsapp_customer_id TEXT,
+  whatsapp_phone_number_id TEXT
 );
 
 -- 2. Tabla de Pacientes (Clientes - No tienen acceso al sistema)
