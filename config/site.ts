@@ -1,8 +1,8 @@
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Portfolio",
-  description: "Portfolio de mis inversiones",
+  name: "Turnos",
+  description: "Gestión de mis turnos",
   navItems: [
     {
       label: "Calendario",
