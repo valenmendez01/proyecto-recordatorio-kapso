@@ -19,11 +19,17 @@ export default function ConfigPage() {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('perfiles')
         .select('whatsapp_status')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error consultando estado:", error);
+        setStatus("disconnected");
+        return;
+      }
         
       setStatus(data?.whatsapp_status === 'connected' ? 'connected' : 'disconnected');
     }
