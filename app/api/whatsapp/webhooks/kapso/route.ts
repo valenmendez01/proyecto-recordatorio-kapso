@@ -26,8 +26,12 @@ export async function POST(req: Request) {
       .update(rawBody)
       .digest("hex");
 
+    const rawSignature = signature.startsWith("sha256=") 
+      ? signature.slice(7) 
+      : signature;
+
     // 3. Convertir a Buffers para la comparación segura
-    const sigBuffer = Buffer.from(signature, "hex");
+    const sigBuffer = Buffer.from(rawSignature, "hex");
     const expectedSigBuffer = Buffer.from(expectedSignature, "hex");
 
     // Validar longitudes (timingSafeEqual requiere que sean iguales)
@@ -52,20 +56,26 @@ export async function POST(req: Request) {
 
     // Evento oficial de Project Webhook para nuevas conexiones
     if (event === "whatsapp.phone_number.created") {
-      const { external_customer_id, id: phoneNumberId } = data;
+      const kapsoCustomerId = data.customer?.id;
+      const phoneNumberId = data.phone_number_id; // ← también cambia este campo
 
-      // Actualizar el estado en la base de datos
+      if (!kapsoCustomerId) {
+        console.error("❌ No se encontró customer.id en el payload");
+        return NextResponse.json({ error: "Missing customer id" }, { status: 400 });
+      }
+
+      // Buscar el usuario por su Kapso Customer ID (ya guardado en la DB)
       const { error } = await supabaseAdmin
         .from("perfiles")
         .update({ 
           whatsapp_status: "connected",
           whatsapp_phone_number_id: phoneNumberId 
         })
-        .eq("id", external_customer_id);
+        .eq("whatsapp_customer_id", kapsoCustomerId); // ← busca por este campo
 
       if (error) throw error;
-      
-      console.log(`✅ Conexión de WhatsApp vinculada para el usuario: ${external_customer_id}`);
+
+      console.log(`✅ WhatsApp conectado para el customer de Kapso: ${kapsoCustomerId}`);
     }
 
     return NextResponse.json({ status: "ok" }, { status: 200 });
