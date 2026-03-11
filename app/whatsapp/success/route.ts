@@ -12,24 +12,17 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status");
   const phone_number_id = searchParams.get("phone_number_id");
 
-  console.log("📨 Success redirect recibido:", { status, phone_number_id });
-
   if (status === "completed" && phone_number_id) {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    console.log("👤 Usuario en sesión:", user?.id ?? "NULL");
-    console.log("🔐 Auth error:", authError?.message ?? "ninguno");
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const { data: updated, error } = await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from("perfiles")
         .update({ whatsapp_status: "connected" })
-        .eq("id", user.id)
-        .select();
+        .eq("id", user.id);
 
-      console.log("📝 Filas actualizadas:", JSON.stringify(updated));
-      if (error) console.error("❌ Error:", error);
+      if (error) console.error("❌ Error actualizando estado:", error);
       else console.log("✅ WhatsApp conectado para usuario:", user.id);
     }
   }
