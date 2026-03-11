@@ -12,29 +12,33 @@ const supabase = createClient();
 
 export default function ConfigPage() {
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<"connected" | "disconnected">("disconnected");
-  const [statusLoading, setStatusLoading] = useState(true);
+  const [whatsappState, setWhatsappState] = useState<{
+    status: "connected" | "disconnected";
+    loading: boolean;
+  }>({ status: "disconnected", loading: true });
 
   const checkStatus = async () => {
-    setStatusLoading(true);
+    setWhatsappState(prev => ({ ...prev, loading: true }));
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (user) {
       const { data, error } = await supabase
         .from('perfiles')
         .select('whatsapp_status')
         .eq('id', user.id)
         .maybeSingle();
-      
+
       if (error) {
         console.error("Error consultando estado:", error);
-        setStatusLoading(false);
+        setWhatsappState(prev => ({ ...prev, loading: false }));
         return;
       }
-        
-      setStatus(data?.whatsapp_status === 'connected' ? 'connected' : 'disconnected');
+
+      setWhatsappState({
+        status: data?.whatsapp_status === 'connected' ? 'connected' : 'disconnected',
+        loading: false
+      });
     }
-    setStatusLoading(false);
   };
 
   useEffect(() => {
@@ -59,7 +63,7 @@ export default function ConfigPage() {
     setLoading(true);
     try {
       await disconnectWhatsapp();
-      setStatus("disconnected");
+      setWhatsappState({ status: "disconnected", loading: false });
     } catch (err) {
       alert("Error al desconectar WhatsApp");
     } finally {
@@ -79,10 +83,10 @@ export default function ConfigPage() {
             <p className="text-small text-default-500">Estado de los recordatorios automáticos</p>
           </div>
         </div>
-        
-        {statusLoading ? (
+
+        {whatsappState.loading ? (
           <Chip variant="flat" size="sm">Cargando...</Chip>
-        ) : status === "connected" ? (
+        ) : whatsappState.status === "connected" ? (
           <Chip
             color="success"
             variant="flat"
@@ -103,12 +107,12 @@ export default function ConfigPage() {
 
       <CardBody className="px-6 pb-6 gap-4">
         <p className="text-sm text-default-600">
-          Vincula tu número de WhatsApp Business para que el sistema pueda enviar 
+          Vincula tu número de WhatsApp Business para que el sistema pueda enviar
           automáticamente los recordatorios de citas a tus pacientes.
         </p>
 
         <div className="flex gap-3 mt-2">
-          {status === "connected" ? (
+          {whatsappState.status === "connected" ? (
             <Button
               color="danger"
               variant="flat"
@@ -134,7 +138,7 @@ export default function ConfigPage() {
             onPress={checkStatus}
             aria-label="Actualizar estado"
           >
-            <RefreshCw size={18} className={statusLoading ? "animate-spin" : ""} />
+            <RefreshCw size={18} className={whatsappState.loading ? "animate-spin" : ""} />
           </Button>
         </div>
       </CardBody>
