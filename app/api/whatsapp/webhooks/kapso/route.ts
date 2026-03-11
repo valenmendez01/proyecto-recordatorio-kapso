@@ -2,7 +2,6 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
-// Inicialización del cliente administrativo de Supabase
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -10,7 +9,6 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
   try {
-    // 1. Obtener el cuerpo bruto para la verificación de firma
     const rawBody = await req.text();
     const signature = req.headers.get("x-webhook-signature");
     const secret = process.env.KAPSO_WEBHOOK_SECRET;
@@ -20,26 +18,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    // 2. Calcular la firma esperada usando HMAC SHA256
     const expectedSignature = crypto
       .createHmac("sha256", secret)
       .update(rawBody)
       .digest("hex");
 
-    const rawSignature = signature.startsWith("sha256=") 
-      ? signature.slice(7) 
+    const rawSignature = signature.startsWith("sha256=")
+      ? signature.slice(7)
       : signature;
 
-    // 3. Convertir a Buffers para la comparación segura
     const sigBuffer = Buffer.from(rawSignature, "hex");
     const expectedSigBuffer = Buffer.from(expectedSignature, "hex");
 
-    // Validar longitudes (timingSafeEqual requiere que sean iguales)
     if (sigBuffer.length !== expectedSigBuffer.length) {
       return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
     }
 
-    // 4. Comparación segura usando Uint8Array para evitar errores de TypeScript
     const isValid = crypto.timingSafeEqual(
       new Uint8Array(sigBuffer),
       new Uint8Array(expectedSigBuffer)
@@ -50,32 +44,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
     }
 
-    // 5. Procesar el payload de Kapso
     const body = JSON.parse(rawBody);
     const { event, data } = body;
 
-    // Evento oficial de Project Webhook para nuevas conexiones
     if (event === "whatsapp.phone_number.created") {
       const kapsoCustomerId = data.customer?.id;
-      const phoneNumberId = data.phone_number_id; // ← también cambia este campo
 
       if (!kapsoCustomerId) {
         console.error("❌ No se encontró customer.id en el payload");
         return NextResponse.json({ error: "Missing customer id" }, { status: 400 });
       }
 
-      // Buscar el usuario por su Kapso Customer ID (ya guardado en la DB)
       const { error } = await supabaseAdmin
         .from("perfiles")
-        .update({ 
-          whatsapp_status: "connected",
-          whatsapp_phone_number_id: phoneNumberId 
-        })
-        .eq("whatsapp_customer_id", kapsoCustomerId); // ← busca por este campo
+        .update({ whatsapp_status: "connected" })
+        .eq("whatsapp_customer_id", kapsoCustomerId);
 
       if (error) throw error;
 
       console.log(`✅ WhatsApp conectado para el customer de Kapso: ${kapsoCustomerId}`);
+    }
+
+    if (event === "whatsapp.phone_number.deleted") {
+      const kapsoCustomerId = data.customer?.id;
+
+      if (kapsoCustomerId) {
+        await supabaseAdmin
+          .from("perfiles")
+          .update({ whatsapp_status: "disconnected" })
+          .eq("whatsapp_customer_id", kapsoCustomerId);
+
+        console.log(`🔌 WhatsApp desconectado para el customer de Kapso: ${kapsoCustomerId}`);
+      }
     }
 
     return NextResponse.json({ status: "ok" }, { status: 200 });
