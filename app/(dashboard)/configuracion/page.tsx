@@ -45,6 +45,24 @@ export default function ConfigPage() {
       const data = await generateSetupLink();
       if (data.url) {
         window.open(data.url, "_blank");
+        // Polling cada 3 segundos por 2 minutos
+        const interval = setInterval(async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return clearInterval(interval);
+
+          const { data: perfil } = await supabase
+            .from('perfiles')
+            .select('whatsapp_status')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (perfil?.whatsapp_status === 'connected') {
+            setStatus('connected');
+            clearInterval(interval);
+          }
+        }, 3000);
+
+        setTimeout(() => clearInterval(interval), 120000);
       }
     } catch (err) {
       alert("Error al conectar con el servicio de mensajería");
