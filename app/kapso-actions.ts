@@ -54,7 +54,12 @@ export async function generateSetupLink() {
       'X-API-Key': KAPSO_API_KEY!,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ setup_link: {} })
+    body: JSON.stringify({ 
+      setup_link: {
+        success_redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/whatsapp/success`,
+        failure_redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/whatsapp/failed`
+      } 
+    })
   });
 
   const setupData = await setupRes.json();
