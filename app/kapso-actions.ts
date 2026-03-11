@@ -63,12 +63,7 @@ export async function generateSetupLink() {
   });
 
   const setupData = await setupRes.json();
-
-  // 👇 Agrega esto
-  console.log("📦 Setup link response status:", setupRes.status);
-  console.log("📦 Setup link response body:", JSON.stringify(setupData, null, 2));
-
   if (!setupRes.ok) throw new Error(setupData.message || "Error al generar link");
 
-  return setupData.data;
+  return setupData.data; // Contiene la .url para el QR
 }
