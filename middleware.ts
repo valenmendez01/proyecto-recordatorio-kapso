@@ -34,7 +34,8 @@ export async function middleware(request: NextRequest) {
   // Definimos las rutas que son públicas
   const isPublicRoute = 
     request.nextUrl.pathname.startsWith('/login') || 
-    request.nextUrl.pathname.startsWith('/presentacion')
+    request.nextUrl.pathname.startsWith('/presentacion') ||
+    request.nextUrl.pathname.startsWith('/whatsapp')
 
   // Proteger rutas: Si no hay usuario y NO es una ruta pública, al login
   if (!user && !isPublicRoute) {
