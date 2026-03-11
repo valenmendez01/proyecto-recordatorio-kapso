@@ -117,6 +117,7 @@ export default function ConfigPage() {
               color="danger"
               variant="flat"
               isLoading={loading}
+              isDisabled={whatsappState.loading}
               onPress={handleDisconnect}
             >
               Desconectar
@@ -124,11 +125,11 @@ export default function ConfigPage() {
           ) : (
             <Button
               color="primary"
-              isLoading={loading}
+              isLoading={loading || whatsappState.loading}
               onPress={handleConnect}
-              endContent={!loading && <ExternalLink size={18} />}
+              endContent={!loading && !whatsappState.loading && <ExternalLink size={18} />}
             >
-              Configurar Conexión
+              {whatsappState.loading ? "Cargando..." : "Configurar Conexión"}
             </Button>
           )}
 
