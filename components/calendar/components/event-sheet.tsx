@@ -40,6 +40,7 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
   const [editHoraFin, setEditHoraFin] = useState<Time | null>(null);
   const [editNotes, setEditNotes] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState<"confirmado" | "cancelado" | "reservado" | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -93,11 +94,22 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
 
   const updateStatus = async (status: "confirmado" | "cancelado" | "reservado") => {
     if (!event) return;
-    setUpdating(true);
-    const { error } = await supabase.from("reservas").update({ estado: status }).eq("id", event.id);
-    if (!error) await fetchEvents();
-    onOpenChange(false);
-    setUpdating(false);
+    
+    setStatusUpdating(status); // Marcamos específicamente este estado como "cargando"
+    
+    const { error } = await supabase
+      .from("reservas")
+      .update({ estado: status })
+      .eq("id", event.id);
+
+    if (!error) {
+      await fetchEvents();
+      onOpenChange(false);
+    } else {
+      alert("Error al actualizar: " + error.message);
+    }
+    
+    setStatusUpdating(null); // Limpiamos el estado de carga
   };
 
   // Esta función se ejecutará cuando el usuario confirme DENTRO del modal
@@ -214,8 +226,68 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
                     <div className="flex flex-col gap-5">
                       <p className="text-lg font-medium">Modificar estado manual a la reserva</p>
                       <div className="mt-auto grid grid-cols-2 gap-2">
-                        <Button color="success" variant="flat" onPress={() => updateStatus("confirmado")}>Confirmar</Button>
-                        <Button color="danger" variant="flat" onPress={() => updateStatus("cancelado")}>Cancelar</Button>
+                        {event.status === "confirmado" && (
+                          <>
+                            <Button 
+                              color="warning" 
+                              variant="flat" 
+                              isLoading={statusUpdating === "reservado"} 
+                              onPress={() => updateStatus("reservado")}
+                            >
+                              Pendiente
+                            </Button>
+                            <Button 
+                              color="danger" 
+                              variant="flat" 
+                              isLoading={statusUpdating === "cancelado"} 
+                              onPress={() => updateStatus("cancelado")}
+                            >
+                              Cancelar
+                            </Button>
+                          </>
+                        )}
+
+                        {event.status === "cancelado" && (
+                          <>
+                            <Button 
+                              color="warning" 
+                              variant="flat" 
+                              isLoading={statusUpdating === "reservado"} 
+                              onPress={() => updateStatus("reservado")}
+                            >
+                              Pendiente
+                            </Button>
+                            <Button 
+                              color="success" 
+                              variant="flat" 
+                              isLoading={statusUpdating === "confirmado"} 
+                              onPress={() => updateStatus("confirmado")}
+                            >
+                              Confirmar
+                            </Button>
+                          </>
+                        )}
+
+                        {event.status === "reservado" && (
+                          <>
+                            <Button 
+                              color="success" 
+                              variant="flat" 
+                              isLoading={statusUpdating === "confirmado"} 
+                              onPress={() => updateStatus("confirmado")}
+                            >
+                              Confirmar
+                            </Button>
+                            <Button 
+                              color="danger" 
+                              variant="flat" 
+                              isLoading={statusUpdating === "cancelado"} 
+                              onPress={() => updateStatus("cancelado")}
+                            >
+                              Cancelar
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

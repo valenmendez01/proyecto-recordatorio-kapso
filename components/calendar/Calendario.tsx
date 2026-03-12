@@ -6,7 +6,7 @@ import { CalendarView } from "./components/calendar-view";
 
 export default function Calendario() {
   return (
-    <Card className="h-[95vh] overflow-hidden lg:p-2 w-full">
+    <Card className="h-full overflow-hidden lg:p-2 w-full">
       <div className="lg:border-white lg:rounded-md overflow-hidden flex flex-col items-center justify-start bg-container h-full w-full bg-transparent">
         <div className="w-full">
           <CalendarHeader />

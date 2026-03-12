@@ -4,7 +4,7 @@ import TablaClientes from "@/components/clientes/tablaClientes";
 
 export default function PatientsPage() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="h-full w-full">
       <TablaClientes />
     </div>
   );
