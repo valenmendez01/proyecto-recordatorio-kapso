@@ -1,7 +1,7 @@
 // app/(dashboard)/configuracion/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@heroui/button";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
@@ -34,20 +34,31 @@ export default function ConfigPage() {
   // Almacenamos los IDs (WABA y Phone) que llegan por el 'message event' de Meta
   const [signupData, setSignupData] = useState<{ wabaId?: string; phoneId?: string }>({});
 
+  // Usamos useRef en lugar de useState para tener el valor disponible de forma instantánea
+  const signupDataRef = useRef<{ wabaId?: string; phoneId?: string }>({});
+
   useEffect(() => {
-    // Escuchamos el evento WA_EMBEDDED_SIGNUP configurado en el FacebookSDK
-    const handleWaEvent = (e: any) => {
-      const { data, type } = e.detail;
-      if (type === 'WA_EMBEDDED_SIGNUP' && data.waba_id) {
-        setSignupData({
-          wabaId: data.waba_id,
-          phoneId: data.phone_number_id
-        });
+    // Escuchamos el evento nativo 'message' exactamente como en tu archivo de prueba
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") {
+        return;
       }
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'WA_EMBEDDED_SIGNUP') {
+          if (data.event === 'FINISH') {
+            // Guardamos los IDs instantáneamente en la referencia
+            signupDataRef.current = {
+              wabaId: data.data.waba_id,
+              phoneId: data.data.phone_number_id
+            };
+          }
+        }
+      } catch (err) {}
     };
 
-    window.addEventListener('wa_signup_event', handleWaEvent);
-    return () => window.removeEventListener('wa_signup_event', handleWaEvent);
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   // PASO 2 y 3: Abrir Popup y Procesar Devolución de Llamada
@@ -55,18 +66,19 @@ export default function ConfigPage() {
     // @ts-ignore
     if (!window.FB) return alert("SDK no cargado");
 
-    // Definimos el callback como una función NORMAL (sin async)
     const fbLoginCallback = (response: any) => {
       if (response.authResponse) {
         const code = response.authResponse.code;
-        console.log('Response code recibido:', code);
 
-        // Creamos una función interna asíncrona para procesar el onboarding
         const procesarOnboarding = async () => {
           setLoading(true);
-          if (signupData.wabaId && signupData.phoneId) {
+          
+          // Extraemos los IDs desde la referencia (ya no desde el estado)
+          const { wabaId, phoneId } = signupDataRef.current;
+          
+          if (wabaId && phoneId) {
             try {
-              const result = await completeOnboarding(code, signupData.wabaId, signupData.phoneId);
+              const result = await completeOnboarding(code, wabaId, phoneId);
               
               if (result.success) {
                 alert("¡Conexión completada y número registrado!");
@@ -78,12 +90,11 @@ export default function ConfigPage() {
               console.error("Error técnico:", err);
             }
           } else {
-            alert("No se recibieron los IDs de la sesión. Intenta de nuevo.");
+            alert("No se recibieron los IDs de la sesión (waba_id y phone_number_id). Intenta de nuevo.");
           }
           setLoading(false);
         };
 
-        // Ejecutamos la lógica asíncrona
         procesarOnboarding();
         
       } else {
@@ -91,18 +102,28 @@ export default function ConfigPage() {
       }
     };
 
-    // Lanzamos el login pasando la función normal
+    // Usamos EXACTAMENTE la configuración que te funciona en tu archivo de prueba
     // @ts-ignore
     window.FB.login(fbLoginCallback, {
-      scope: 'whatsapp_business_management,whatsapp_business_messaging',
-      extras: {
-        feature: 'whatsapp_embedded_signup',
-        setup: {
-          business_config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID 
-        }
-      },
+      config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID,
       response_type: 'code',
       override_default_response_type: true,
+      extras: {
+        version: "v3",
+        setup: {
+          business: {
+            id: null,
+            name: "Recordatorios Coexistence",
+            email: "info@odontologabetianamorante.com.ar",
+            phone: {},
+            address: {},
+            timezone: null
+          },
+          phone: { category: null, description: "" },
+        },
+        featureType: "whatsapp_business_app_onboarding",
+        sessionInfoVersion: "3"
+      }
     });
   };
 

@@ -56,15 +56,32 @@ export async function handleEmbeddedSignupEvent(payload: any) {
 export async function exchangeCodeForBusinessToken(code: string) {
   const appId = process.env.NEXT_PUBLIC_META_APP_ID;
   const appSecret = process.env.META_APP_SECRET;
+  const apiVersion = process.env.NEXT_PUBLIC_WHATSAPP_API_VERSION;
 
-  const url = `${BASE_URL}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`;
+  const url = `https://graph.facebook.com/${apiVersion}/oauth/access_token`;
 
-  const res = await fetch(url);
-  const data = await res.json();
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      client_id: appId,
+      client_secret: appSecret,
+      code: code,
+      grant_type: "authorization_code",
+      // En el flujo del SDK Embebido, el redirect_uri generalmente se envía vacío 
+      // o no se envía, ya que no hubo una redirección real de URL.
+      redirect_uri: "" 
+    }),
+  });
 
-  if (!res.ok) throw new Error(data.error?.message || "Error al obtener el token empresarial");
+  const data = await response.json();
 
-  // Este es el <BUSINESS_TOKEN> solicitado en la documentación
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Error al obtener el token empresarial");
+  }
+
   return data.access_token as string;
 }
 
