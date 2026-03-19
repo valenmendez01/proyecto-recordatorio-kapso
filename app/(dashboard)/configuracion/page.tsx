@@ -106,6 +106,7 @@ export default function ConfigPage() {
     // @ts-ignore
     window.FB.login(fbLoginCallback, {
       config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID,
+      scope: 'whatsapp_business_management,whatsapp_business_messaging',
       response_type: 'code',
       override_default_response_type: true,
       extras: {
