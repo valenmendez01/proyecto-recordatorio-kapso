@@ -17,6 +17,7 @@ import {
 import { sendTestMessage, completeOnboarding } from "@/app/meta-actions"; 
 import { createClient } from "@/utils/supabase/client";
 import { Input } from "@heroui/input";
+import { addToast, ToastProvider } from "@heroui/toast";
 
 const supabase = createClient();
 
@@ -81,16 +82,28 @@ export default function ConfigPage() {
               const result = await completeOnboarding(code, wabaId, phoneId);
               
               if (result.success) {
-                alert("¡Conexión completada y número registrado!");
-                window.location.reload();
+                addToast({
+                  title: "¡Conexión completada!",
+                  description: "El número ha sido registrado exitosamente.",
+                  color: "success",
+                });
+                setTimeout(() => window.location.reload(), 1500);
               } else {
-                alert("Error en el registro: " + result.error);
+                addToast({
+                  title: "Error en el registro",
+                  description: result.error,
+                  color: "danger",
+                });
               }
             } catch (err) {
               console.error("Error técnico:", err);
             }
           } else {
-            alert("No se recibieron los IDs de la sesión (waba_id y phone_number_id). Intenta de nuevo.");
+            addToast({
+              title: "Error de sesión",
+              description: "No se recibieron los IDs de la sesión (waba_id y phone_number_id). Intenta de nuevo.",
+              color: "danger",
+            });
           }
           setLoading(false);
         };
