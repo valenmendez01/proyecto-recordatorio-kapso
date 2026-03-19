@@ -1,3 +1,4 @@
+// app/(dashboard)/configuracion/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11,13 +12,11 @@ import {
   RefreshCw,
   Trash2,
   Settings2,
-  ShieldCheck,
   Zap
 } from "lucide-react";
-import { preVerifyPhoneNumber, sendTestMessage } from "@/app/meta-actions"; 
+import { preVerifyPhoneNumber, sendTestMessage, completeOnboarding } from "@/app/meta-actions"; 
 import { createClient } from "@/utils/supabase/client";
 import { Input } from "@heroui/input";
-import { completeOnboarding } from "@/app/meta-actions";
 
 const supabase = createClient();
 
@@ -32,11 +31,11 @@ export default function ConfigPage() {
   const [testLoading, setTestLoading] = useState(false);
   const [testPhone, setTestPhone] = useState("");
 
-  // Almacenamos temporalmente los IDs que llegan por el 'message event'
+  // Almacenamos los IDs (WABA y Phone) que llegan por el 'message event' de Meta
   const [signupData, setSignupData] = useState<{ wabaId?: string; phoneId?: string }>({});
 
   useEffect(() => {
-    // Escuchamos el evento que configuramos en el FacebookSDK
+    // Escuchamos el evento WA_EMBEDDED_SIGNUP configurado en el FacebookSDK
     const handleWaEvent = (e: any) => {
       const { data, type } = e.detail;
       if (type === 'WA_EMBEDDED_SIGNUP' && data.waba_id) {
@@ -51,9 +50,7 @@ export default function ConfigPage() {
     return () => window.removeEventListener('wa_signup_event', handleWaEvent);
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // PASO 1: Pre-verificar Número (Server Action)
-  // ---------------------------------------------------------------------------
+  // PASO 1: Pre-verificación
   const handlePreVerify = async () => {
     setLoading(true);
     const result = await preVerifyPhoneNumber("542994562051");
@@ -66,60 +63,46 @@ export default function ConfigPage() {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // PASO 2: Abrir Popup de Registro (SDK JS)
-  // ---------------------------------------------------------------------------
+  // PASO 2 y 3: Abrir Popup y Procesar Devolución de Llamada
   const handleConnect = () => {
     // @ts-ignore
     if (!window.FB) return alert("SDK no cargado");
 
-    // Implementación del fbLoginCallback que enviaste
+    // Devolución de llamada (Callback) que recibe el 'code'
     const fbLoginCallback = async (response: any) => {
       if (response.authResponse) {
         const code = response.authResponse.code;
-        console.log('Response code recibido:', code);
+        setLoading(true);
 
-        // Verificamos que ya tengamos los IDs del listener
+        // Verificamos si capturamos los IDs del listener durante el flujo
         if (signupData.wabaId && signupData.phoneId) {
-          // LLAMADA AL SERVIDOR: Enviamos el code + los IDs capturados
+          // Ejecutamos el intercambio de tokens, suscripción de webhooks y registro en el servidor
           const result = await completeOnboarding(code, signupData.wabaId, signupData.phoneId);
           
           if (result.success) {
-            alert("¡Conexión completada y número registrado!");
+            alert("¡Conexión completada, webhooks activos y número registrado!");
             window.location.reload();
           } else {
-            alert("Error en el registro: " + result.error);
+            alert("Error en el proceso de incorporación: " + result.error);
           }
         } else {
-          alert("No se recibieron los IDs de la sesión. Intenta de nuevo.");
+          alert("No se capturaron los identificadores de la sesión. Intenta de nuevo.");
         }
+        setLoading(false);
       } else {
         console.log('El usuario canceló el registro:', response);
       }
     };
 
+    // Lanzamiento del registro insertado con la configuración requerida
     // @ts-ignore
-    window.FB.login((response: any) => {
-      if (response.authResponse) {
-        // Obtenemos el code para enviarlo a nuestro servidor
-        const code = response.authResponse.code;
-        window.location.href = `/whatsapp/success?code=${code}`;
-      } else {
-        console.log("El usuario canceló o no autorizó la aplicación.");
-      }
-    }, {
-      // Estos son los permisos específicos requeridos
-      scope: 'whatsapp_business_management,whatsapp_business_messaging',
-      extras: {
-        feature: 'whatsapp_embedded_signup',
-        setup: {
-          // Asegúrate de que esta variable esté en tu .env.local como NEXT_PUBLIC_
-          business_config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID 
-        }
-      },
-      // IMPORTANTE: Para recibir un 'code' en lugar de un token corto en el cliente
+    window.FB.login(fbLoginCallback, {
+      config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID, 
       response_type: 'code',
       override_default_response_type: true,
+      extras: {
+        setup: {},
+      }
     });
   };
 
@@ -152,10 +135,9 @@ export default function ConfigPage() {
     <div className="flex flex-col gap-8 w-full max-w-5xl mx-auto p-4 md:p-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Configuración del Sistema</h1>
-        <p className="text-default-500">Pruebas del Registro Insertado de Meta.</p>
+        <p className="text-default-500">Gestión oficial del Registro Insertado de Meta.</p>
       </div>
 
-      {/* ESTADO DE CONEXIÓN */}
       <Card className="bg-content1">
         <CardBody className="flex flex-row items-center justify-between p-6">
           <div className="flex items-center gap-4">
@@ -180,8 +162,8 @@ export default function ConfigPage() {
                <Button color="primary" variant="flat" onPress={handlePreVerify} isLoading={loading}>
                 1. Pre-verificar
               </Button>
-              <Button color="primary" onPress={handleConnect}>
-                2. Abrir Popup
+              <Button color="primary" onPress={handleConnect} isLoading={loading}>
+                2. Conectar WhatsApp
               </Button>
             </div>
           ) : (
@@ -192,7 +174,6 @@ export default function ConfigPage() {
         </CardBody>
       </Card>
 
-      {/* TEST DE MENSAJES */}
       <Card className="border-primary/40 border-2 shadow-lg bg-content1">
         <CardHeader className="flex gap-3 px-6 pt-6">
           <MessageSquare className="text-primary" size={24} />
@@ -206,13 +187,13 @@ export default function ConfigPage() {
             onValueChange={setTestPhone}
             startContent={<span className="text-default-400">+</span>}
           />
+          {errorMsg && <p className="text-danger text-xs">{errorMsg}</p>}
           <Button color="primary" isLoading={testLoading} onPress={handleSendTest} startContent={<RefreshCw size={20} />}>
             Enviar hello_world
           </Button>
         </CardBody>
       </Card>
 
-      {/* IDENTIFICADORES */}
       <Card className="shadow-sm border-none bg-content1">
         <CardHeader className="px-6 pt-6">
           <h3 className="text-md font-bold flex items-center gap-2">
@@ -222,11 +203,11 @@ export default function ConfigPage() {
         <CardBody className="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-3 bg-default-50 rounded-lg border border-default-200">
             <p className="text-tiny uppercase font-bold text-default-400">Phone ID</p>
-            <p className="font-mono text-small truncate">{process.env.WHATSAPP_PHONE_NUMBER_ID || "No configurado"}</p>
+            <p className="font-mono text-small truncate">{process.env.NEXT_PUBLIC_WHATSAPP_PHONE_NUMBER_ID || "No configurado"}</p>
           </div>
           <div className="p-3 bg-default-50 rounded-lg border border-default-200">
-            <p className="text-tiny uppercase font-bold text-default-400">Versión</p>
-            <p className="font-mono text-small">{process.env.WHATSAPP_API_VERSION || "v22.0"}</p>
+            <p className="text-tiny uppercase font-bold text-default-400">Versión API</p>
+            <p className="font-mono text-small">{process.env.NEXT_PUBLIC_WHATSAPP_API_VERSION || "v21.0"}</p>
           </div>
         </CardBody>
       </Card>
