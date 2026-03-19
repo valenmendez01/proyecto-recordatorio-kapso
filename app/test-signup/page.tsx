@@ -67,7 +67,8 @@ export default function TestSignupPage() {
           },
           "phone": { "category": null, "description": "" },
         },
-        "featureType": "whatsapp_business_app_onboarding"
+        "featureType": "whatsapp_business_app_onboarding",
+        "sessionInfoVersion": "3"
       }
     });
   };
