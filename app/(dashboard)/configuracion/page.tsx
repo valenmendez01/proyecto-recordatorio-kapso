@@ -55,41 +55,54 @@ export default function ConfigPage() {
     // @ts-ignore
     if (!window.FB) return alert("SDK no cargado");
 
-    // Devolución de llamada (Callback) que recibe el 'code'
-    const fbLoginCallback = async (response: any) => {
+    // Definimos el callback como una función NORMAL (sin async)
+    const fbLoginCallback = (response: any) => {
       if (response.authResponse) {
         const code = response.authResponse.code;
-        setLoading(true);
+        console.log('Response code recibido:', code);
 
-        // Verificamos si capturamos los IDs del listener durante el flujo
-        if (signupData.wabaId && signupData.phoneId) {
-          // Ejecutamos el intercambio de tokens, suscripción de webhooks y registro en el servidor
-          const result = await completeOnboarding(code, signupData.wabaId, signupData.phoneId);
-          
-          if (result.success) {
-            alert("¡Conexión completada, webhooks activos y número registrado!");
-            window.location.reload();
+        // Creamos una función interna asíncrona para procesar el onboarding
+        const procesarOnboarding = async () => {
+          setLoading(true);
+          if (signupData.wabaId && signupData.phoneId) {
+            try {
+              const result = await completeOnboarding(code, signupData.wabaId, signupData.phoneId);
+              
+              if (result.success) {
+                alert("¡Conexión completada y número registrado!");
+                window.location.reload();
+              } else {
+                alert("Error en el registro: " + result.error);
+              }
+            } catch (err) {
+              console.error("Error técnico:", err);
+            }
           } else {
-            alert("Error en el proceso de incorporación: " + result.error);
+            alert("No se recibieron los IDs de la sesión. Intenta de nuevo.");
           }
-        } else {
-          alert("No se capturaron los identificadores de la sesión. Intenta de nuevo.");
-        }
-        setLoading(false);
+          setLoading(false);
+        };
+
+        // Ejecutamos la lógica asíncrona
+        procesarOnboarding();
+        
       } else {
         console.log('El usuario canceló el registro:', response);
       }
     };
 
-    // Lanzamiento del registro insertado con la configuración requerida
+    // Lanzamos el login pasando la función normal
     // @ts-ignore
     window.FB.login(fbLoginCallback, {
-      config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID, 
+      scope: 'whatsapp_business_management,whatsapp_business_messaging',
+      extras: {
+        feature: 'whatsapp_embedded_signup',
+        setup: {
+          business_config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID 
+        }
+      },
       response_type: 'code',
       override_default_response_type: true,
-      extras: {
-        setup: {},
-      }
     });
   };
 
