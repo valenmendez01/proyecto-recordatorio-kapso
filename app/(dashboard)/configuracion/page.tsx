@@ -14,7 +14,7 @@ import {
   Settings2,
   Zap
 } from "lucide-react";
-import { preVerifyPhoneNumber, sendTestMessage, completeOnboarding } from "@/app/meta-actions"; 
+import { sendTestMessage, completeOnboarding } from "@/app/meta-actions"; 
 import { createClient } from "@/utils/supabase/client";
 import { Input } from "@heroui/input";
 
@@ -49,19 +49,6 @@ export default function ConfigPage() {
     window.addEventListener('wa_signup_event', handleWaEvent);
     return () => window.removeEventListener('wa_signup_event', handleWaEvent);
   }, []);
-
-  // PASO 1: Pre-verificación
-  const handlePreVerify = async () => {
-    setLoading(true);
-    const result = await preVerifyPhoneNumber("542994562051");
-    setLoading(false);
-    
-    if (result.error) {
-      alert("Error al pre-verificar: " + result.error);
-    } else {
-      alert("✅ Número pre-verificado con éxito. Ya puedes abrir el Popup.");
-    }
-  };
 
   // PASO 2 y 3: Abrir Popup y Procesar Devolución de Llamada
   const handleConnect = () => {
@@ -159,11 +146,8 @@ export default function ConfigPage() {
           
           {whatsappState.status === "disconnected" ? (
             <div className="flex gap-2">
-               <Button color="primary" variant="flat" onPress={handlePreVerify} isLoading={loading}>
-                1. Pre-verificar
-              </Button>
               <Button color="primary" onPress={handleConnect} isLoading={loading}>
-                2. Conectar WhatsApp
+                Conectar WhatsApp
               </Button>
             </div>
           ) : (
