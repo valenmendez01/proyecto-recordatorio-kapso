@@ -43,7 +43,6 @@ export default function ConfigPage() {
       if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") {
         return;
       }
-      console.log("1. EVENTO RECIBIDO DE META:", event.data);
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'WA_EMBEDDED_SIGNUP') {
@@ -68,7 +67,6 @@ export default function ConfigPage() {
     if (!window.FB) return alert("SDK no cargado");
 
     const fbLoginCallback = (response: any) => {
-      console.log("2. RESPUESTA DE FB.LOGIN:", response);
       if (response.authResponse) {
         const code = response.authResponse.code;
 
@@ -108,7 +106,7 @@ export default function ConfigPage() {
     // @ts-ignore
     window.FB.login(fbLoginCallback, {
       config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID,
-      scope: 'whatsapp_business_management,whatsapp_business_messaging',
+      // scope: 'whatsapp_business_management,whatsapp_business_messaging',
       response_type: 'code',
       override_default_response_type: true,
       extras: {
