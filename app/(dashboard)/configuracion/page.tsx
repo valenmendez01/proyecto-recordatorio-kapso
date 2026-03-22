@@ -230,9 +230,9 @@ export default function ConfigPage() {
               </Button>
             </div>
           ) : (
-            <Button variant="light" color="danger" startContent={<Trash2 size={18} />}>
-              Desconectar
-            </Button>
+            <div className="flex items-center gap-2 text-sm text-default-500 max-w-xs text-right">
+              <p>Para desconectar, abrí WhatsApp Business → <span className="font-semibold">Configuración → Cuenta → Plataforma empresarial</span> y tocá {"Desconectar cuenta"}.</p>
+            </div>
           )}
         </CardBody>
       </Card>
