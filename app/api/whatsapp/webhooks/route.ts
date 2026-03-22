@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
 // ---------------------------------------------------------------------------
 // Tipos del payload de Meta
@@ -97,7 +97,10 @@ async function validateSignature(req: Request): Promise<boolean> {
  * viene phone_number_id en metadata.
  */
 async function updateProfileStatusByWabaId(wabaId: string, status: string) {
-  const supabase = await createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!, // bypasea RLS
+  );
 
   const { error } = await supabase
     .from("perfiles")
