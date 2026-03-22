@@ -267,7 +267,7 @@ export default function ConfigPage() {
           </div>
 
           {!whatsappState.loading && whatsappState.status === "disconnected" && (
-            <Button color="primary" onPress={handleConnect} isLoading={loading}>
+            <Button color="primary" onClick={handleConnect} isLoading={loading}>
               Conectar WhatsApp
             </Button>
           )}
