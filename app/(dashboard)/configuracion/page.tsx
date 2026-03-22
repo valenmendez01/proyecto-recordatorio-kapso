@@ -3,23 +3,15 @@
 
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@heroui/button";
-import { Card, CardHeader, CardBody } from "@heroui/card";
+import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
-import {
-  MessageSquare,
-  CheckCircle2,
-  XCircle,
-  RefreshCw,
-  Trash2,
-  Settings2,
-  Zap
-} from "lucide-react";
+import { CheckCircle2, XCircle, Zap } from "lucide-react";
 import { sendTestMessage, completeOnboarding } from "@/app/meta-actions"; 
 import { createClient } from "@/utils/supabase/client";
-import { Input } from "@heroui/input";
 import { addToast, ToastProvider } from "@heroui/toast";
 import { Alert } from "@heroui/alert";
 import { cn } from "@heroui/theme";
+import { Skeleton } from "@heroui/skeleton";
 
 const supabase = createClient();
 
@@ -252,23 +244,29 @@ export default function ConfigPage() {
       <Card className="bg-content1">
         <CardBody className="flex flex-row items-center justify-between p-6">
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-full ${whatsappState.status === 'connected' ? 'bg-success/10 text-success' : 'bg-default-100 text-default-400'}`}>
-              <Zap size={24} />
-            </div>
-            <div>
-              <p className="font-bold">Estado de la cuenta</p>
-              <Chip 
-                color={whatsappState.status === "connected" ? "success" : "default"} 
-                variant="flat" 
-                size="sm"
-                startContent={whatsappState.status === "connected" ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-              >
-                {whatsappState.status === "connected" ? "Conectado" : "Desconectado"}
-              </Chip>
+            <Skeleton isLoaded={!whatsappState.loading} className="rounded-full">
+              <div className={`p-3 rounded-full ${whatsappState.status === 'connected' ? 'bg-success/10 text-success' : 'bg-default-100 text-default-400'}`}>
+                <Zap size={24} />
+              </div>
+            </Skeleton>
+            <div className="flex flex-col gap-2">
+              <Skeleton isLoaded={!whatsappState.loading} className="rounded-lg">
+                <p className="font-bold">Estado de la cuenta</p>
+              </Skeleton>
+              <Skeleton isLoaded={!whatsappState.loading} className="rounded-lg w-24">
+                <Chip
+                  color={whatsappState.status === "connected" ? "success" : "default"}
+                  variant="flat"
+                  size="sm"
+                  startContent={whatsappState.status === "connected" ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                >
+                  {whatsappState.status === "connected" ? "Conectado" : "Desconectado"}
+                </Chip>
+              </Skeleton>
             </div>
           </div>
-          
-          {whatsappState.status === "disconnected" && (
+
+          {!whatsappState.loading && whatsappState.status === "disconnected" && (
             <Button color="primary" onPress={handleConnect} isLoading={loading}>
               Conectar WhatsApp
             </Button>
