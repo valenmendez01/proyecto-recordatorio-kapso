@@ -29,7 +29,8 @@ interface WhatsAppValue {
   messages?: WhatsAppMessage[];
   // account_update fields
   phone_number?: string;
-  event?: "PARTNER_REMOVED" | "ACCOUNT_OFFBOARDED" | "ACCOUNT_RECONNECTED" | string;
+  event?: string;
+  waba_info?: { waba_id: string; owner_business_id: string; partner_app_id?: string };
 }
 
 interface WhatsAppChange {
@@ -166,27 +167,34 @@ export async function POST(req: NextRequest) {
 
       // ── Eventos de gestión de cuenta ──────────────────────────────────────
       if (field === "account_update") {
+        const wabaIdFromInfo = value.waba_info?.waba_id ?? wabaId;
+
         switch (value.event) {
+          case "PARTNER_APP_UNINSTALLED":
+            // El cliente desconectó la app desde WhatsApp Business
+            console.log(`[webhook] 🔌 PARTNER_APP_UNINSTALLED | WABA: ${wabaIdFromInfo}`);
+            await updateProfileStatusByWabaId(wabaIdFromInfo, "disconnected");
+            break;
+
+          case "PARTNER_APP_INSTALLED":
+            // El cliente otorgó permisos / reconectó la app
+            console.log(`[webhook] ✅ PARTNER_APP_INSTALLED | WABA: ${wabaIdFromInfo}`);
+            await updateProfileStatusByWabaId(wabaIdFromInfo, "connected");
+            break;
+
           case "PARTNER_REMOVED":
-            // El cliente se desconectó desde la app de WhatsApp Business
-            console.log(`[webhook] 🔌 PARTNER_REMOVED | WABA: ${wabaId} | phone: ${value.phone_number}`);
-            await updateProfileStatusByWabaId(wabaId, "disconnected");
+            // WABA descompartida del partner a nivel organizacional
+            console.log(`[webhook] 🔌 PARTNER_REMOVED | WABA: ${wabaIdFromInfo}`);
+            await updateProfileStatusByWabaId(wabaIdFromInfo, "disconnected");
             break;
 
-          case "ACCOUNT_OFFBOARDED":
-            // El cliente canceló el registro o cambió de dispositivo
-            console.log(`[webhook] 📴 ACCOUNT_OFFBOARDED | WABA: ${wabaId}`);
-            await updateProfileStatusByWabaId(wabaId, "disconnected");
-            break;
-
-          case "ACCOUNT_RECONNECTED":
-            // El cliente se volvió a reconectar con el mismo partner
-            console.log(`[webhook] 🔄 ACCOUNT_RECONNECTED | WABA: ${wabaId}`);
-            await updateProfileStatusByWabaId(wabaId, "connected");
+          case "PARTNER_ADDED":
+            console.log(`[webhook] ✅ PARTNER_ADDED | WABA: ${wabaIdFromInfo}`);
+            await updateProfileStatusByWabaId(wabaIdFromInfo, "connected");
             break;
 
           default:
-            console.log(`[webhook] ℹ️ account_update desconocido | event: ${value.event} | WABA: ${wabaId}`);
+            console.log(`[webhook] ℹ️ account_update | event: ${value.event} | WABA: ${wabaIdFromInfo}`);
         }
         continue;
       }
