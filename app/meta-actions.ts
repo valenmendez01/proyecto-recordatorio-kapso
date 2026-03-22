@@ -58,31 +58,42 @@ export async function exchangeCodeForBusinessToken(code: string) {
   const appSecret = process.env.META_APP_SECRET;
   const apiVersion = process.env.NEXT_PUBLIC_WHATSAPP_API_VERSION;
 
-  const url = `https://graph.facebook.com/${apiVersion}/oauth/access_token`;
+  console.log("[exchangeToken] Iniciando. appId:", appId, "| apiVersion:", apiVersion, "| code (primeros 10):", code?.slice(0, 10));
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      client_id: appId,
-      client_secret: appSecret,
-      code: code,
-      grant_type: "authorization_code",
-      // En el flujo del SDK Embebido, el redirect_uri generalmente se envía vacío 
-      // o no se envía, ya que no hubo una redirección real de URL.
-      redirect_uri: "" 
-    }),
+  if (!appId || !appSecret) {
+    throw new Error("META_APP_ID o META_APP_SECRET no están configurados en las variables de entorno.");
+  }
+
+  // Para el flujo de Embedded Signup, Meta espera los parámetros como
+  // query string en GET, NO como JSON en POST.
+  // Además, redirect_uri debe omitirse completamente (no enviarse vacío).
+  const params = new URLSearchParams({
+    client_id: appId,
+    client_secret: appSecret,
+    code: code,
   });
+
+  const url = `https://graph.facebook.com/${apiVersion}/oauth/access_token?${params.toString()}`;
+
+  const response = await fetch(url, { method: "GET" });
 
   const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(data.error?.message || "Error al obtener el token empresarial");
+  console.log("[exchangeToken] Respuesta de Meta:", JSON.stringify(data));
+
+  if (!response.ok || data.error) {
+    throw new Error(
+      data.error?.message || `Error HTTP ${response.status} al obtener el token empresarial`
+    );
   }
 
-  return data.access_token as string;
+  // Meta puede devolver `access_token` o dentro de un objeto anidado
+  const token = data.access_token ?? data?.data?.access_token;
+  if (!token) {
+    throw new Error(`Meta respondió OK pero no incluyó access_token. Respuesta: ${JSON.stringify(data)}`);
+  }
+
+  return token as string;
 }
 
 /**
@@ -110,13 +121,17 @@ export async function subscribeAppToWaba(wabaId: string, businessToken: string) 
 
 // Función integradora
 export async function completeOnboarding(code: string, wabaId: string, phoneNumberId: string) {
+  console.log("[completeOnboarding] Iniciando con wabaId:", wabaId, "| phoneNumberId:", phoneNumberId, "| code length:", code?.length);
+  
   try {
     // 1. Intercambio de código por Token
     const businessToken = await exchangeCodeForBusinessToken(code);
+    console.log("[completeOnboarding] Token obtenido. Longitud:", businessToken?.length);
 
     // 2. Suscribir App a la WABA
     try {
       await subscribeAppToWaba(wabaId, businessToken);
+      console.log("[completeOnboarding] Suscripción a WABA exitosa.");
     } catch (webhookError) {
       console.warn("Advertencia al suscribir webhooks (se continuará el flujo):", webhookError);
     }

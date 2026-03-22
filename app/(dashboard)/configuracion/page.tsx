@@ -41,21 +41,34 @@ export default function ConfigPage() {
   useEffect(() => {
     // Escuchamos el evento nativo 'message' exactamente como en tu archivo de prueba
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") {
+      // Log para diagnosticar qué origins llegan realmente
+      console.log("[Meta postMessage] Origin recibido:", event.origin);
+      
+      if (
+        event.origin !== "https://www.facebook.com" &&
+        event.origin !== "https://web.facebook.com" &&
+        event.origin !== "https://business.facebook.com"
+      ) {
         return;
       }
       try {
         const data = JSON.parse(event.data);
+        console.log("[Meta postMessage] Data recibida:", JSON.stringify(data));
         if (data.type === 'WA_EMBEDDED_SIGNUP') {
           if (data.event === 'FINISH') {
-            // Guardamos los IDs instantáneamente en la referencia
-            signupDataRef.current = {
+            const ids = {
               wabaId: data.data.waba_id,
               phoneId: data.data.phone_number_id
             };
+            console.log("[Meta postMessage] IDs capturados:", ids);
+            // Guardamos en ref Y en state para tener ambos sincronizados
+            signupDataRef.current = ids;
+            setSignupData(ids);
           }
         }
-      } catch (err) {}
+      } catch (err) {
+        console.error("[Meta postMessage] Error al parsear:", err);
+      }
     };
 
     window.addEventListener('message', handleMessage);
@@ -70,41 +83,60 @@ export default function ConfigPage() {
     const fbLoginCallback = (response: any) => {
       if (response.authResponse) {
         const code = response.authResponse.code;
+        console.log("[FB.login] Callback recibido. Code (primeros 10):", code?.slice(0, 10));
+        console.log("[FB.login] signupDataRef al momento del callback:", signupDataRef.current);
 
         const procesarOnboarding = async () => {
           setLoading(true);
           
-          // ESPERAMOS 1 SEGUNDO PARA EVITAR LA CONDICIÓN DE CARRERA DEL POPUP
-          setTimeout(async () => {
-            const { wabaId, phoneId } = signupDataRef.current;
-            
-            if (wabaId && phoneId) {
-              try {
-                const result = await completeOnboarding(code, wabaId, phoneId);
-                
-                if (result.success) {
-                  addToast({
-                    title: "¡Conexión completada!",
-                    description: "Tus credenciales se han guardado en la base de datos.",
-                    color: "success",
-                  });
-                  setTimeout(() => window.location.reload(), 1500);
-                } else {
-                  addToast({ title: "Error al guardar", description: result.error, color: "danger" });
-                }
-              } catch (err: any) {
-                addToast({ title: "Error técnico", description: err.message, color: "danger" });
+          // Esperamos hasta 3 segundos a que lleguen los IDs del postMessage
+          // usando polling cada 200ms en vez de un timeout fijo
+          const IDS_TIMEOUT_MS = 3000;
+          const POLL_INTERVAL_MS = 200;
+          let elapsed = 0;
+
+          await new Promise<void>((resolve) => {
+            const interval = setInterval(() => {
+              elapsed += POLL_INTERVAL_MS;
+              const { wabaId, phoneId } = signupDataRef.current;
+              if ((wabaId && phoneId) || elapsed >= IDS_TIMEOUT_MS) {
+                clearInterval(interval);
+                resolve();
               }
-            } else {
-               // Si después de 1 segundo siguen vacíos, avisamos claramente
-              addToast({
-                title: "Error de sincronización",
-                description: "Meta no devolvió los identificadores de tu cuenta.",
-                color: "danger",
-              });
+            }, POLL_INTERVAL_MS);
+          });
+
+          const { wabaId, phoneId } = signupDataRef.current;
+          console.log("[procesarOnboarding] IDs después de espera:", { wabaId, phoneId });
+          
+          if (wabaId && phoneId) {
+            try {
+              const result = await completeOnboarding(code, wabaId, phoneId);
+              console.log("[procesarOnboarding] Resultado:", result);
+              
+              if (result.success) {
+                addToast({
+                  title: "¡Conexión completada!",
+                  description: "Tus credenciales se han guardado en la base de datos.",
+                  color: "success",
+                });
+                setTimeout(() => window.location.reload(), 1500);
+              } else {
+                addToast({ title: "Error al guardar", description: result.error, color: "danger" });
+              }
+            } catch (err: any) {
+              console.error("[procesarOnboarding] Error técnico:", err);
+              addToast({ title: "Error técnico", description: err.message, color: "danger" });
             }
-            setLoading(false);
-          }, 1000); // 1000 milisegundos de gracia
+          } else {
+            console.error("[procesarOnboarding] IDs vacíos después de esperar", IDS_TIMEOUT_MS, "ms");
+            addToast({
+              title: "Error de sincronización",
+              description: "Meta no devolvió los identificadores de tu cuenta. Revisá la consola del navegador.",
+              color: "danger",
+            });
+          }
+          setLoading(false);
         };
 
         procesarOnboarding();
