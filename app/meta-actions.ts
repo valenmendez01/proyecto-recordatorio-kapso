@@ -342,8 +342,7 @@ export async function registrarPlantillaMeta(header: string, body: string) {
     }
   });
 
-  // FIX: generamos el nombre ANTES del fetch para garantizar consistencia con Supabase
-  const templateName = `${header.toLowerCase().replace(/\s+/g, "_")}_${Date.now()}`;
+  const templateName = `${header.toLowerCase().replace(/\s+/g, "_")}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
   const response = await fetch(
     `https://graph.facebook.com/${process.env.NEXT_PUBLIC_WHATSAPP_API_VERSION}/${perfil.whatsapp_customer_id}/message_templates`,
