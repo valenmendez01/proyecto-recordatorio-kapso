@@ -231,12 +231,94 @@ export async function sendTestMessage(recipientPhone: string) {
   }
 }
 
+// Las 3 plantillas predefinidas de la app (viven en el servidor)
+const PREDEFINED_TEMPLATES = [
+  {
+    id: "recordatorio",
+    header: "Recordatorio de cita",
+    body: `Hola {nombre} {apellido}, te recuerdo que tenés un turno: 
+📅 Día: *{fecha} a las {hora}*
+📍 Dirección: Roca 1239
+
+🔹 Si necesitás reprogramar tu cita, hacelo con al menos 12 h de anticipación.
+🔹 En caso de síntomas compatibles con resfrío, por favor reprogramá tu visita.
+
+*Ingresa al siguiente link para responder:* {link}
+
+Muchas gracias! Saludos.`,
+  },
+  {
+    id: "reserva",
+    header: "Reserva de turno",
+    body: `Hola {nombre} {apellido}, tu turno ha sido confirmado:
+📅 Día: *{fecha} a las {hora}*
+📍 Dirección: Roca 1239
+
+🔹 Si necesitás reprogramar tu cita, hacelo con al menos 12 h de anticipación.
+🔹 En caso de síntomas compatibles con resfrío, por favor reprogramá tu visita.
+
+Muchas gracias! Saludos.`,
+  },
+  {
+    id: "actualizacion",
+    header: "Actualización de turno",
+    body: `Hola {nombre} {apellido}, tu turno fue modificado: 
+📅 Día: *{fecha} a las {hora}*
+📍 Dirección: Roca 1239
+
+🔹 Si necesitás reprogramar tu cita, hacelo con al menos 12 h de anticipación.
+🔹 En caso de síntomas compatibles con resfrío, por favor reprogramá tu visita.
+
+Muchas gracias! Saludos.`,
+  },
+];
+
+export async function enviarPlantillasARevision() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  // Verificar que no las haya enviado ya
+  const { data: existentes } = await supabase
+    .from("plantillas")
+    .select("id")
+    .eq("perfil_id", user.id);
+
+  if (existentes && existentes.length > 0) {
+    return { error: "Las plantillas ya fueron enviadas a revisión." };
+  }
+
+  // Enviar las 3 en paralelo
+  const resultados = await Promise.allSettled(
+    PREDEFINED_TEMPLATES.map((t) => registrarPlantillaMeta(t.header, t.body))
+  );
+
+  const errores = resultados
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .map((r) => r.reason?.message ?? String(r.reason));
+
+  if (errores.length === PREDEFINED_TEMPLATES.length) {
+    return { error: `Fallaron todas las plantillas: ${errores.join(", ")}` };
+  }
+
+  if (errores.length > 0) {
+    return { warning: `Algunas plantillas fallaron: ${errores.join(", ")}` };
+  }
+
+  return { success: true };
+}
+
 export async function registrarPlantillaMeta(header: string, body: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
 
-  const { data: perfil } = await supabase.from("perfiles").select("*").eq("id", user.id).single();
+  const { data: perfil } = await supabase
+    .from("perfiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
   if (!perfil?.whatsapp_customer_id) throw new Error("WABA ID no encontrado");
 
   // Definición de mapeo y ejemplos
@@ -245,14 +327,13 @@ export async function registrarPlantillaMeta(header: string, body: string) {
     { tag: "{apellido}", example: "Perez" },
     { tag: "{fecha}", example: "Lunes 16 de abril" },
     { tag: "{hora}", example: "09:00 hs" },
-    { tag: "{link}", example: "https://ejemplo.com/confirmar" }
+    { tag: "{link}", example: "https://www.odontologabetianamorante.com.ar/confirmar" },
   ];
 
   let finalBody = body;
   const exampleValues: string[] = [];
   let currentIndex = 1;
 
-  // Procesamos el cuerpo para reemplazar tags por {{n}} y recolectar ejemplos
   varsMapping.forEach((item) => {
     if (finalBody.includes(item.tag)) {
       finalBody = finalBody.replaceAll(item.tag, `{{${currentIndex}}}`);
@@ -261,45 +342,47 @@ export async function registrarPlantillaMeta(header: string, body: string) {
     }
   });
 
+  // FIX: generamos el nombre ANTES del fetch para garantizar consistencia con Supabase
+  const templateName = `${header.toLowerCase().replace(/\s+/g, "_")}_${Date.now()}`;
+
   const response = await fetch(
     `https://graph.facebook.com/${process.env.NEXT_PUBLIC_WHATSAPP_API_VERSION}/${perfil.whatsapp_customer_id}/message_templates`,
     {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${perfil.whatsapp_access_token}`,
-        'Content-Type': 'application/json' 
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${perfil.whatsapp_access_token}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name: `recordatorio_${Date.now()}`,
+        name: templateName,
         category: "UTILITY",
         language: "es_AR",
         components: [
           ...(header ? [{ type: "HEADER", format: "TEXT", text: header }] : []),
-          { 
-            type: "BODY", 
+          {
+            type: "BODY",
             text: finalBody,
-            // Agregamos el objeto example requerido por Meta
             ...(exampleValues.length > 0 && {
               example: {
-                body_text: [exampleValues] 
-              }
-            })
-          }
-        ]
-      })
+                body_text: [exampleValues],
+              },
+            }),
+          },
+        ],
+      }),
     }
   );
 
   const metaData = await response.json();
   if (!response.ok) throw new Error(metaData.error?.message || "Error en Meta");
 
-  // Guardar en Supabase (usando el texto original con {tags} para que sea editable)
+  // Guardamos con templateName (no con metaData.name) para garantizar el match en el webhook
   await supabase.from("plantillas").insert({
     perfil_id: user.id,
-    nombre_meta: metaData.name || metaData.id,
+    nombre_meta: templateName,
     header_text: header,
-    body_text: body,
-    status: 'PENDING'
+    body_text: body, // guardamos el texto original con {tags} para que sea legible
+    status: "PENDING",
   });
 
   return { success: true };

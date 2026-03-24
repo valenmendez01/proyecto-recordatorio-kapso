@@ -5,15 +5,13 @@ import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@heroui/button";
 import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
-import { CheckCircle, CheckCircle2, Clock, XCircle, Zap } from "lucide-react";
-import { sendTestMessage, completeOnboarding, registrarPlantillaMeta } from "@/app/meta-actions"; 
+import { CheckCircle, CheckCircle2, XCircle, Zap } from "lucide-react";
+import { sendTestMessage, completeOnboarding, enviarPlantillasARevision } from "@/app/meta-actions"; 
 import { createClient } from "@/utils/supabase/client";
 import { addToast, ToastProvider } from "@heroui/toast";
 import { Alert } from "@heroui/alert";
-import { Accordion, AccordionItem } from "@heroui/accordion";
 import { cn } from "@heroui/theme";
 import { Skeleton } from "@heroui/skeleton";
-import { Input, Textarea } from "@heroui/input";
 
 const supabase = createClient();
 
@@ -60,6 +58,50 @@ const CustomAlert = forwardRef<HTMLDivElement, React.ComponentProps<typeof Alert
 );
 CustomAlert.displayName = "CustomAlert";
 
+const PREDEFINED_TEMPLATES = [
+  {
+    id: "recordatorio",
+    title: "Recordatorio de cita",
+    header: "Recordatorio de cita",
+    body: `Hola {nombre} {apellido}, te recuerdo que tenés un turno: 
+      📅 Día: *{fecha} a las {hora}*
+      📍 Dirección: Roca 1239
+
+      🔹 Si necesitás reprogramar tu cita, hacelo con al menos 12 h de anticipación.
+      🔹 En caso de síntomas compatibles con resfrío, por favor reprogramá tu visita.
+
+      *Ingresa al siguiente link para responder:* {link}
+
+      Muchas gracias! Saludos.`,
+  },
+  {
+    id: "reserva",
+    title: "Reserva de turno",
+    header: "Reserva de turno",
+    body: `Hola {nombre} {apellido}, tu turno ha sido confirmado:
+      📅 Día: *{fecha} a las {hora}*
+      📍 Dirección: Roca 1239
+
+      🔹 Si necesitás reprogramar tu cita, hacelo con al menos 12 h de anticipación.
+      🔹 En caso de síntomas compatibles con resfrío, por favor reprogramá tu visita.
+
+      Muchas gracias! Saludos.`,
+  },
+  {
+    id: "actualizacion",
+    title: "Actualización de turno",
+    header: "Actualización de turno",
+    body: `Hola {nombre} {apellido}, tu turno fue modificado: 
+      📅 Día: *{fecha} a las {hora}*
+      📍 Dirección: Roca 1239
+
+      🔹 Si necesitás reprogramar tu cita, hacelo con al menos 12 h de anticipación.
+      🔹 En caso de síntomas compatibles con resfrío, por favor reprogramá tu visita.
+
+      Muchas gracias! Saludos.`,
+  }
+];
+
 export default function ConfigPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -68,8 +110,6 @@ export default function ConfigPage() {
     loading: boolean;
   }>({ status: "disconnected", loading: true });
 
-  const [templateHeader, setTemplateHeader] = useState("");
-  const [templateBody, setTemplateBody] = useState("Hola {nombre}, te recordamos tu cita el día {fecha} a las {hora}.");
   const [isSaving, setIsSaving] = useState(false);
   const [plantillas, setPlantillas] = useState<any[]>([]);
   const [loadingPlantillas, setLoadingPlantillas] = useState(true);
@@ -82,6 +122,11 @@ export default function ConfigPage() {
 
   // Usamos useRef en lugar de useState para tener el valor disponible de forma instantánea
   const signupDataRef = useRef<{ wabaId?: string; phoneId?: string }>({});
+
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  const [enviandoPlantillas, setEnviandoPlantillas] = useState(false);
+  const [plantillasEnviadas, setPlantillasEnviadas] = useState(false);
 
   useEffect(() => {
     // Escuchamos el evento nativo 'message' exactamente como en tu archivo de prueba
@@ -258,20 +303,26 @@ export default function ConfigPage() {
     cargarPlantillas();
   }, []);
 
-  const handleSaveTemplate = async () => {
-    setIsSaving(true);
-    try {
-      const res = await registrarPlantillaMeta(templateHeader, templateBody);
-      if (res.success) {
-        alert("Plantilla enviada a revisión");
-        cargarPlantillas();
-      }
-    } catch (e: any) {
-      alert(e.message);
-    } finally {
-      setIsSaving(false);
+  useEffect(() => {
+    if (plantillas.length > 0) setPlantillasEnviadas(true);
+  }, [plantillas]);
+
+  // Función para enviar plantillas predefinidas
+  async function handleEnviarPlantillas() {
+    setEnviandoPlantillas(true);
+    const result = await enviarPlantillasARevision();
+    setEnviandoPlantillas(false);
+
+    if (result.error) {
+      addToast({ title: "Error", description: result.error, color: "danger" });
+    } else if (result.warning) {
+      addToast({ title: "Atención", description: result.warning, color: "warning" });
+    } else {
+      addToast({ title: "¡Listo!", description: "Plantillas enviadas. Meta las revisará en hasta 24 hs.", color: "success" });
+      setPlantillasEnviadas(true);
+      cargarPlantillas(); // recarga para reflejar el estado PENDING en la UI
     }
-  };
+  }
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-5xl mx-auto p-4 md:p-8">
@@ -353,118 +404,66 @@ export default function ConfigPage() {
       </Card>
       */}
 
-      <Card className="bg-content1 mt-8">
-        <CardBody className="p-6 flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <h3 className="text-lg font-bold">Plantilla de Recordatorio</h3>
-            <p className="text-sm text-default-500 mb-2">
-              Personaliza el mensaje que recibirán tus pacientes. 
+      {/* PLANTILLAS (Solo si está conectado) */}
+      {whatsappState.status === "connected" && (
+        <div className="flex flex-col gap-4 mt-4">
+          <div className="flex flex-col gap-1 px-1">
+            <h3 className="text-xl font-bold">Plantillas</h3>
+            <p className="text-sm text-default-500">
+              Se usan para enviar mensajes automáticos y preaprobados a tus clientes fuera de la conversación activa.
             </p>
-
-            {/* LEYENDA DE VARIABLES */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
-              {[
-                { tag: "{nombre}", desc: "Nombre del paciente" },
-                { tag: "{apellido}", desc: "Apellido del paciente" },
-                { tag: "{fecha}", desc: "Fecha del turno" },
-                { tag: "{hora}", desc: "Hora del turno" },
-                { tag: "{link}", desc: "Link de confirmación" },
-              ].map((item) => (
-                <div key={item.tag} className="flex flex-col gap-1 bg-default-100/50 p-2 rounded-lg border border-default-200">
-                  <span className="text-primary font-mono text-xs font-bold">{item.tag}</span>
-                  <span className="text-[10px] text-default-500 uppercase leading-tight">{item.desc}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <Input 
-            label="Encabezado (Opcional)" 
-            placeholder="Ej: Confirmación de Turno" 
-            value={templateHeader}
-            onValueChange={setTemplateHeader}
-          />
-          
-          <Textarea 
-            label="Cuerpo del mensaje" 
-            placeholder="Escribe el mensaje aquí..."
-            value={templateBody}
-            onValueChange={setTemplateBody}
-            minRows={4}
-          />
-
-          <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
-            <p className="text-xs font-bold text-primary uppercase mb-2">Vista Previa:</p>
-            <p className="text-sm font-bold">{templateHeader}</p>
-            <p className="text-sm whitespace-pre-wrap">{templateBody.replace(/{nombre}/g, "Juan")}</p>
           </div>
 
-          <Button 
-            color="primary" 
-            onPress={handleSaveTemplate} 
-            isLoading={isSaving}
-          >
-            Guardar y Enviar a Revisión
-          </Button>
-        </CardBody>
-      </Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {PREDEFINED_TEMPLATES.map((temp) => {
+              // Buscamos si esta plantilla ya existe en DB para mostrar su estado real
+              const enDB = plantillas.find((p) => p.header_text === temp.header);
+              const statusColor = enDB?.status === "APPROVED"
+                ? "success"
+                : enDB?.status === "REJECTED"
+                ? "danger"
+                : enDB?.status === "PENDING"
+                ? "warning"
+                : "default";
 
-      <div className="flex flex-col gap-4 mt-8">
-        <h3 className="text-xl font-bold px-1">Mis Plantillas en Meta</h3>
-        
-        {loadingPlantillas ? (
-          <Skeleton className="rounded-lg h-24 w-full" />
-        ) : plantillas.length === 0 ? (
-          <p className="text-default-400 text-sm px-1 italic">Aún no has creado plantillas.</p>
-        ) : (
-          <Accordion variant="splitted" selectionMode="multiple" className="px-0">
-            {plantillas.map((p) => (
-              <AccordionItem
-                key={p.id}
-                aria-label={p.nombre_meta}
-                subtitle={
-                  <div className="flex gap-2 items-center mt-1">
-                    <Chip 
-                      size="sm" 
-                      variant="flat" 
-                      color={
-                        p.status === 'APPROVED' ? 'success' : 
-                        p.status === 'REJECTED' ? 'danger' : 'warning'
-                      }
-                      startContent={
-                        p.status === 'APPROVED' ? <CheckCircle size={12}/> : 
-                        p.status === 'REJECTED' ? <XCircle size={12}/> : <Clock size={12}/>
-                      }
-                    >
-                      {p.status === 'APPROVED' ? 'Aprobada' : 
-                        p.status === 'REJECTED' ? 'Rechazada' : 'En Revisión'}
-                    </Chip>
-                    <span className="text-tiny text-default-400">
-                      {new Date(p.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                }
-                title={<span className="font-semibold text-sm uppercase">{p.nombre_meta}</span>}
-              >
-                <div className="flex flex-col gap-3 pb-4">
-                  {p.header_text && (
-                    <div>
-                      <p className="text-tiny font-bold text-default-400 uppercase">Encabezado:</p>
-                      <p className="text-sm font-bold">{p.header_text}</p>
+              return (
+                <Card key={temp.id}>
+                  <CardBody className="p-4 flex flex-col justify-between gap-3">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
+                            <CheckCircle size={16} />
+                          </div>
+                          <p className="text-sm font-bold">{temp.title}</p>
+                        </div>
+                        {enDB && (
+                          <Chip size="sm" color={statusColor} variant="flat">
+                            {enDB.status}
+                          </Chip>
+                        )}
+                      </div>
+                      <p className="text-xs font-bold text-default-600 truncate mt-2">{temp.header}</p>
+                      <p className="text-xs text-default-500 italic line-clamp-3">{temp.body}</p>
                     </div>
-                  )}
-                  <div>
-                    <p className="text-tiny font-bold text-default-400 uppercase">Cuerpo:</p>
-                    <p className="text-sm whitespace-pre-wrap bg-default-50 p-3 rounded-md border border-default-100">
-                      {p.body_text}
-                    </p>
-                  </div>
-                </div>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        )}
-      </div>
+                  </CardBody>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Botón único debajo de las 3 cards */}
+          <Button
+            color="primary"
+            isLoading={enviandoPlantillas}
+            isDisabled={plantillasEnviadas}
+            onPress={handleEnviarPlantillas}
+            className="self-start"
+          >
+            {plantillasEnviadas ? "✅ Plantillas enviadas a revisión" : "Enviar plantillas a revisión"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
