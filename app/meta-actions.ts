@@ -350,7 +350,12 @@ export async function registrarPlantillaMeta(header: string, body: string) {
     }
   });
 
-  const templateName = `${header.toLowerCase().replace(/\s+/g, "_")}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const nameMap: Record<string, string> = {
+    "Recordatorio de cita": "recordatorio_de_cita",
+    "Reserva de turno": "reserva_de_turno",
+    "Actualización de turno": "actualizacion_de_turno",
+  };
+  const templateName = `${nameMap[header] ?? "plantilla"}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
   const response = await fetch(
     `https://graph.facebook.com/${process.env.NEXT_PUBLIC_WHATSAPP_API_VERSION}/${perfil.whatsapp_customer_id}/message_templates`,
