@@ -19,6 +19,8 @@ import { parseDate, getLocalTimeZone, today, Time } from "@internationalized/dat
 import { Search, AlertCircle } from "lucide-react";
 
 import { useCalendarStore } from "../store/calendar-store";
+import { useIsMobile } from "../hooks/use-mobile";
+
 import { createClient } from "@/utils/supabase/client";
 import { Paciente } from "@/types/types";
 
@@ -49,6 +51,7 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
   const [isLoading, setIsLoading] = useState(false);
   const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [mensajeError, setMensajeError] = useState("");
+  const isMobile = useIsMobile();
 
   const buscarPacientes = async (texto: string) => {
     if (texto.length < 2) {
@@ -139,13 +142,13 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
   };
 
   return (
-    <Modal isOpen={open} onOpenChange={onOpenChange} placement="center">
+    <Modal isOpen={open} placement="center" size={isMobile ? "xs" : "lg"} onOpenChange={onOpenChange}>
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader>Nueva Reserva</ModalHeader>
+            <ModalHeader className="md:text-xl">Nueva Reserva</ModalHeader>
             <ModalBody>
-              <form id="create-event-form" onSubmit={handleSubmit} className="grid gap-4">
+              <form className="grid gap-4" id="create-event-form" onSubmit={handleSubmit}>
 
                 {/* 1. Buscador de Paciente — modo completamente controlado */}
                 <Autocomplete

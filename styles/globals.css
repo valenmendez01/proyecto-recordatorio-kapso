@@ -12,9 +12,6 @@
 }
 
 :root {
-    color-scheme: light;
-    background-color: #ffffff;
-
     --chart-background: oklch(1 0 0);
     --chart-foreground: oklch(0.145 0.004 285);
     --chart-foreground-muted: oklch(0.55 0.014 260);
@@ -25,9 +22,6 @@
 }
 
 .dark {
-    color-scheme: dark;
-    background-color: #000000;
-
     --chart-background: oklch(0.145 0 0);
     --chart-foreground: oklch(0.45 0 0);
     --chart-crosshair: oklch(0.45 0 0);
