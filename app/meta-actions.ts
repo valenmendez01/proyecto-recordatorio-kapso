@@ -1,5 +1,8 @@
 "use server";
 
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
+
 import { createClient } from "@/utils/supabase/server";
 
 const API_VERSION = process.env.WHATSAPP_API_VERSION;
@@ -406,7 +409,7 @@ export async function enviarNotificacionWhatsApp(reservaId: string, tipo: 'reser
   const supabase = await createClient();
   
   // 1. Obtener datos de la reserva, el paciente y el perfil del profesional
-  const { data: reserva, error } = await supabase
+  const { data: reserva, error: reservaError } = await supabase
     .from("reservas")
     .select(`
       *,
@@ -416,7 +419,7 @@ export async function enviarNotificacionWhatsApp(reservaId: string, tipo: 'reser
     .eq("id", reservaId)
     .single();
 
-  if (error || !reserva) return { error: "No se encontró la reserva" };
+  if (reservaError || !reserva) return { error: "No se encontró la reserva" };
 
   const { paciente, perfil } = reserva as any;
 
@@ -424,31 +427,50 @@ export async function enviarNotificacionWhatsApp(reservaId: string, tipo: 'reser
     return { error: "WhatsApp no configurado para este profesional" };
   }
 
-  // 2. Determinar la plantilla según el tipo
-  // IMPORTANTE: Estos nombres deben coincidir exactamente con los aprobados en Meta
-  const plantillas = {
-    reserva: "reserva_de_turno",
-    actualizacion: "actualizacion_de_turno",
-    recordatorio: "recordatorio_de_cita"
+  // 2. Buscar el nombre_meta REAL en la tabla de plantillas (dinámico)
+  const tipoAHeader: Record<string, string> = {
+    reserva: "Reserva de turno",
+    actualizacion: "Actualización de turno",
+    recordatorio: "Recordatorio de cita"
   };
 
-  // 3. Preparar variables (Asegúrate que coincidan con el orden en Meta {{1}}, {{2}}...)
+  const { data: plantillaDb, error: plantillaError } = await supabase
+    .from("plantillas")
+    .select("nombre_meta")
+    .eq("perfil_id", perfil.id)
+    .eq("header_text", tipoAHeader[tipo])
+    .maybeSingle();
+
+  if (plantillaError || !plantillaDb) {
+    return { error: `No se encontró la plantilla para: ${tipoAHeader[tipo]}` };
+  }
+
+  // --- LÓGICA DE FORMATEO ---
+  // Formatear fecha: "lunes 10 de abril"
+  const fechaBase = format(parseISO(reserva.reserva_fecha), "EEEE d 'de' MMMM", { locale: es });
+  // Capitalizar la primera letra: "Lunes 10 de abril"
+  const fechaFormateada = fechaBase.charAt(0).toUpperCase() + fechaBase.slice(1);
+  
+  // Formatear hora: "09:00 hs"
+  const horaFormateada = `${reserva.hora_inicio.slice(0, 5)} hs`;
+
+  // 3. Preparar variables para Meta ({{1}} al {{5}})
   const components: any[] = [
     {
       type: "body",
       parameters: [
-        { type: "text", text: paciente.nombre },
-        { type: "text", text: paciente.apellido },
-        { type: "text", text: reserva.reserva_fecha },
-        { type: "text", text: reserva.hora_inicio }
+        { type: "text", text: paciente.nombre },      // {{1}}
+        { type: "text", text: paciente.apellido },    // {{2}}
+        { type: "text", text: fechaFormateada },      // {{3}} -> "Lunes 10 de Abril"
+        { type: "text", text: horaFormateada }        // {{4}} -> "09:00 hs"
       ]
     }
   ];
 
-  // Si es recordatorio, agregamos el link con el token como {{5}}
+  // Si es recordatorio, agregamos el link como {{5}}
   if (tipo === 'recordatorio') {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-
+    
     components[0].parameters.push({
       type: "text", 
       text: `${baseUrl}/reservas/${reserva.token}`
@@ -469,7 +491,7 @@ export async function enviarNotificacionWhatsApp(reservaId: string, tipo: 'reser
         to: paciente.telefono,
         type: "template",
         template: {
-          name: plantillas[tipo],
+          name: plantillaDb.nombre_meta, // Uso del nombre dinámico de la DB
           language: { code: "es_AR" },
           components
         },
@@ -477,5 +499,7 @@ export async function enviarNotificacionWhatsApp(reservaId: string, tipo: 'reser
     }
   );
 
-  return response.ok ? { success: true } : { error: "Error en el envío" };
+  const data = await response.json();
+
+  return response.ok ? { success: true } : { error: data.error?.message || "Error en el envío" };
 }
