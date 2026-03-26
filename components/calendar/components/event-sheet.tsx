@@ -69,25 +69,42 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
 
       return;
     }
+    
     if (editHoraFin.compare(editHora) <= 0) {
       alert("La hora de fin debe ser posterior a la hora de inicio.");
-
+      
       return;
     }
+
     setUpdating(true);
     
+    // 1. Preparamos los nuevos valores formateados para comparar
+    const nuevaFecha = format(editDate, "yyyy-MM-dd");
+    const nuevaHoraInicio = editHora.toString().slice(0, 5);
+    const nuevaHoraFin = editHoraFin.toString().slice(0, 5);
+
+    // 2. Verificamos si hubo cambios reales en fecha u hora
+    const huboCambioHorario = 
+      nuevaFecha !== event.date || 
+      nuevaHoraInicio !== event.startTime || 
+      nuevaHoraFin !== event.endTime;
+
     const { error: updateError } = await supabase
       .from("reservas")
       .update({
-        reserva_fecha: format(editDate, "yyyy-MM-dd"),
-        hora_inicio: editHora.toString().slice(0, 5),
-        hora_fin: editHoraFin.toString().slice(0, 5),
+        reserva_fecha: nuevaFecha,
+        hora_inicio: nuevaHoraInicio,
+        hora_fin: nuevaHoraFin,
         notas: editNotes
       })
       .eq("id", event.id);
 
     if (!updateError) {
-      await enviarNotificacionWhatsApp(event.id, 'actualizacion');
+      // 3. Solo enviamos el WhatsApp si cambió el horario/fecha
+      if (huboCambioHorario) {
+        await enviarNotificacionWhatsApp(event.id, 'actualizacion');
+      }
+      
       await fetchEvents();
       setIsEditing(false);
     } else {

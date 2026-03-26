@@ -1,58 +1,57 @@
+// app/api/whatsapp/send-reminders/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from "@supabase/supabase-js";
-import { format, addDays } from 'date-fns';
+import { format, addDays, addMinutes } from 'date-fns';
 
 import { enviarNotificacionWhatsApp } from "@/app/meta-actions";
 
 export async function GET(request: Request) {
-  // 1. Validar seguridad contra el CRON_SECRET
   const authHeader = request.headers.get('authorization');
 
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new NextResponse('No autorizado', { status: 401 });
   }
 
-  // 2. Crear cliente administrativo (Service Role) para saltar RLS
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
   try {
-    // 3. Calcular la fecha de mañana (24hs después de hoy)
-    const fechaMañana = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+    const ahora = new Date();
+    // Calculamos el rango de tiempo exactamente 24 horas adelante
+    const fechaMañana = format(addDays(ahora, 1), 'yyyy-MM-dd');
+    const horaInicioVentana = format(addDays(ahora, 1), 'HH:mm');
+    const horaFinVentana = format(addMinutes(addDays(ahora, 1), 30), 'HH:mm');
 
-    // 4. Buscar reservas para mañana que estén en estado 'reservado'
+    // Buscamos turnos para mañana, en estado 'reservado', 
+    // cuya hora de inicio esté dentro de los próximos 30 minutos (mañana)
     const { data: turnos, error } = await supabase
       .from('reservas')
-      .select('id, paciente_id, estado')
+      .select('id')
       .eq('reserva_fecha', fechaMañana)
-      .eq('estado', 'reservado');
+      .eq('estado', 'reservado')
+      .gte('hora_inicio', horaInicioVentana)
+      .lt('hora_inicio', horaFinVentana);
 
     if (error) throw error;
-
     if (!turnos || turnos.length === 0) {
-      return NextResponse.json({ message: "No hay turnos para mañana" });
+      return NextResponse.json({ message: "No hay turnos en esta ventana de tiempo" });
     }
 
-    // 5. Enviar las notificaciones de recordatorio
     const promesasEnvio = turnos.map((turno) => 
       enviarNotificacionWhatsApp(turno.id, 'recordatorio')
     );
 
-    const resultados = await Promise.allSettled(promesasEnvio);
-
-    // 6. Log de resultados para monitoreo
-    console.log(`[Cron] Procesados ${turnos.length} recordatorios.`);
+    await Promise.allSettled(promesasEnvio);
 
     return NextResponse.json({ 
       success: true, 
-      procesados: turnos.length 
+      procesados: turnos.length,
+      ventana: `${horaInicioVentana} a ${horaFinVentana}`
     });
 
   } catch (error: any) {
-    console.error("[Cron Error]:", error.message);
-    
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
