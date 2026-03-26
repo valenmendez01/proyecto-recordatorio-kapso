@@ -175,7 +175,7 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
 
   return (
     <>
-      <Drawer isOpen={open} onOpenChange={onOpenChange} placement="right" size="sm" classNames={{ base: "z-[200]", backdrop: "z-[199]" }}>
+      <Drawer isOpen={open} onOpenChange={onOpenChange} placement="right" size="sm" classNames={{ wrapper: "z-[200]" }}>
         <DrawerContent>
           {(onClose) => (
             <>
