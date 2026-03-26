@@ -319,6 +319,7 @@ export async function enviarPlantillasARevision() {
 export async function registrarPlantillaMeta(header: string, body: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
   if (!user) throw new Error("No autenticado");
 
   const { data: perfil } = await supabase
@@ -386,6 +387,7 @@ export async function registrarPlantillaMeta(header: string, body: string) {
   );
 
   const metaData = await response.json();
+
   if (!response.ok) throw new Error(metaData.error?.message || "Error en Meta");
 
   // Guardamos con templateName (no con metaData.name) para garantizar el match en el webhook
@@ -398,4 +400,82 @@ export async function registrarPlantillaMeta(header: string, body: string) {
   });
 
   return { success: true };
+}
+
+export async function enviarNotificacionWhatsApp(reservaId: string, tipo: 'reserva' | 'actualizacion' | 'recordatorio') {
+  const supabase = await createClient();
+  
+  // 1. Obtener datos de la reserva, el paciente y el perfil del profesional
+  const { data: reserva, error } = await supabase
+    .from("reservas")
+    .select(`
+      *,
+      paciente:pacientes(*),
+      perfil:perfiles(*)
+    `)
+    .eq("id", reservaId)
+    .single();
+
+  if (error || !reserva) return { error: "No se encontró la reserva" };
+
+  const { paciente, perfil } = reserva as any;
+
+  if (!perfil.whatsapp_access_token || !perfil.whatsapp_phone_number_id) {
+    return { error: "WhatsApp no configurado para este profesional" };
+  }
+
+  // 2. Determinar la plantilla según el tipo
+  // IMPORTANTE: Estos nombres deben coincidir exactamente con los aprobados en Meta
+  const plantillas = {
+    reserva: "reserva_de_turno",
+    actualizacion: "actualizacion_de_turno",
+    recordatorio: "recordatorio_de_cita"
+  };
+
+  // 3. Preparar variables (Asegúrate que coincidan con el orden en Meta {{1}}, {{2}}...)
+  const components: any[] = [
+    {
+      type: "body",
+      parameters: [
+        { type: "text", text: paciente.nombre },
+        { type: "text", text: paciente.apellido },
+        { type: "text", text: reserva.reserva_fecha },
+        { type: "text", text: reserva.hora_inicio }
+      ]
+    }
+  ];
+
+  // Si es recordatorio, agregamos el link con el token como {{5}}
+  if (tipo === 'recordatorio') {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
+    components[0].parameters.push({
+      type: "text", 
+      text: `${baseUrl}/reservas/${reserva.token}`
+    });
+  }
+
+  // 4. Llamada a la API de Meta
+  const response = await fetch(
+    `https://graph.facebook.com/${process.env.NEXT_PUBLIC_WHATSAPP_API_VERSION}/${perfil.whatsapp_phone_number_id}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${perfil.whatsapp_access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: paciente.telefono,
+        type: "template",
+        template: {
+          name: plantillas[tipo],
+          language: { code: "es_AR" },
+          components
+        },
+      }),
+    }
+  );
+
+  return response.ok ? { success: true } : { error: "Error en el envío" };
 }

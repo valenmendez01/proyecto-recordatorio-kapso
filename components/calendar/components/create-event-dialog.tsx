@@ -23,6 +23,7 @@ import { useIsMobile } from "../hooks/use-mobile";
 
 import { createClient } from "@/utils/supabase/client";
 import { Paciente } from "@/types/types";
+import { enviarNotificacionWhatsApp } from "@/app/meta-actions";
 
 interface CreateEventDialogProps {
   open: boolean;
@@ -82,6 +83,7 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
   const handleInputChange = (value: string) => {
     if (justSelectedRef.current) {
       justSelectedRef.current = false;
+
       return;
     }
     setInputValue(value);
@@ -94,6 +96,7 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
     const seleccionado = pacientesSugeridos.find(
       (p) => p.id.toString() === key.toString()
     );
+
     if (seleccionado) {
       justSelectedRef.current = true;
       setClienteEncontrado(seleccionado);
@@ -109,36 +112,50 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
     if (!date || !horaInicio || !horaFin || !clienteEncontrado) {
       setMensajeError("Faltan datos obligatorios.");
       setIsLoading(false);
+
       return;
     }
 
     if (horaFin.compare(horaInicio) <= 0) {
       setMensajeError("La hora de fin debe ser posterior a la de inicio.");
       setIsLoading(false);
+
       return;
     }
 
     const fechaStr = format(date, "yyyy-MM-dd");
 
-    const { error } = await supabase.from("reservas").insert({
-      paciente_id: clienteEncontrado.id,
-      reserva_fecha: fechaStr,
-      hora_inicio: horaInicio.toString().slice(0, 5),
-      hora_fin: horaFin.toString().slice(0, 5),
-      estado: "reservado",
-      notas: notas || "Sin notas",
-    });
+    // Insertamos una sola vez pidiendo que nos devuelva la fila creada
+    const { data: nuevaReserva, error: insertError } = await supabase
+      .from("reservas")
+      .insert({
+        paciente_id: clienteEncontrado.id,
+        reserva_fecha: fechaStr,
+        hora_inicio: horaInicio.toString().slice(0, 5),
+        hora_fin: horaFin.toString().slice(0, 5),
+        estado: "reservado",
+        notas: notas || "Sin notas",
+      })
+      .select()
+      .single();
 
-    if (error) {
-      setMensajeError("Error al crear la reserva: " + error.message);
+    if (insertError) {
+      setMensajeError("Error al crear la reserva: " + insertError.message);
       setIsLoading(false);
       
       return;
     }
 
-    await fetchEvents();
-    if (date) goToDate(date);
-    onOpenChange(false);
+    // Si llegamos aquí, la reserva se creó correctamente
+    if (nuevaReserva) {
+      // Disparar envío de WhatsApp (no bloqueante)
+      enviarNotificacionWhatsApp(nuevaReserva.id, 'reserva'); 
+      
+      await fetchEvents();
+      if (date) goToDate(date);
+      onOpenChange(false);
+    }
+
     setIsLoading(false);
   };
 

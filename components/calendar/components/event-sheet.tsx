@@ -23,6 +23,7 @@ import { useCalendarStore } from "../store/calendar-store";
 import { createClient } from "@/utils/supabase/client";
 import { CalendarEvent } from "@/types/types";
 import { Divider } from "@heroui/divider";
+import { enviarNotificacionWhatsApp } from "@/app/meta-actions";
 
 interface EventSheetProps {
   event: CalendarEvent | null;
@@ -65,15 +66,17 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
   const handleSaveChanges = async () => {
     if (!event || !editDate || !editHora || !editHoraFin) {
       alert("Por favor completa todos los campos.");
+
       return;
     }
     if (editHoraFin.compare(editHora) <= 0) {
       alert("La hora de fin debe ser posterior a la hora de inicio.");
+
       return;
     }
     setUpdating(true);
     
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from("reservas")
       .update({
         reserva_fecha: format(editDate, "yyyy-MM-dd"),
@@ -83,12 +86,14 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
       })
       .eq("id", event.id);
 
-    if (!error) {
+    if (!updateError) {
+      await enviarNotificacionWhatsApp(event.id, 'actualizacion');
       await fetchEvents();
       setIsEditing(false);
     } else {
-      alert("Error al guardar: " + error.message);
+      alert("Error al guardar: " + updateError.message);
     }
+
     setUpdating(false);
   };
 

@@ -1,22 +1,29 @@
--- 1. Habilitar la extensión si no está activa
+-- 1. Habilitar extensiones necesarias
 create extension if not exists pg_net;
 create extension if not exists pg_cron;
 
--- 2. Crear el trabajo (Job)
--- Se ejecuta todos los domingos (0) a las 12:00 UTC (9 AM AR)
+-- 2. Eliminar el job si ya existe para evitar duplicados
+select cron.unschedule('send-daily-reminders');
+
+-- 3. Crear el trabajo (Job)
+-- Programar el recordatorio diario (9 AM Argentina / 12 PM UTC)
 select
   cron.schedule(
-    'send-sunday-reminders', -- nombre del job
-    '0 12 * * 0',            -- cron syntax (min hora dia mes dia_sem)
+    'send-daily-reminders', -- nombre del job
+    '0 12 * * *',           -- Ejecución diaria a las 12:00 UTC
     $$
     select
       net.http_get(
-          -- CAMBIA ESTO POR TU URL DE PRODUCCIÓN REAL
-          url:='https://v0-four-step-booking-system.vercel.app/api/whatsapp/send-reminders',
-          headers:='{"Authorization": "Bearer f67890123456789abcde"}'::jsonb
+        url:='https://tu-proyecto.vercel.app/api/whatsapp/send-reminders',
+        headers:='{"Authorization": "Bearer f67890123456789abcde"}'::jsonb
       ) as request_id;
     $$
   );
+
+-- Nota: 
+-- Reemplaza https://tu-proyecto.vercel.app por tu URL real de producción
+-- Reemplaza el token f67890123456789abcde por uno seguro que guardes en tu .env como CRON_SECRET.
+
 
 -- Para ejecutar en el momento (test):
 -- SELECT

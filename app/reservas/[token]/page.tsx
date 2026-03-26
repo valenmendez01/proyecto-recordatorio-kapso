@@ -11,6 +11,7 @@ interface Props {
 }
 
 export default async function ReservaPublicaPage({ params }: Props) {
+  const { token } = await params;
   const supabase = await createClient();
 
   const { data: reserva, error } = await supabase
@@ -23,7 +24,7 @@ export default async function ReservaPublicaPage({ params }: Props) {
       token,
       pacientes (nombre, apellido)
     `)
-    .eq("token", params.token)
+    .eq("token", token)
     .single();
 
   if (error || !reserva) return notFound();

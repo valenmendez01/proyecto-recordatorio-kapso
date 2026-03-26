@@ -7,12 +7,14 @@ CREATE TABLE public.reservas (
   hora_fin TIME NOT NULL,
   estado TEXT NOT NULL DEFAULT 'reservado' CHECK (estado IN ('reservado', 'confirmado', 'cancelado')),
   notas TEXT,
-  token UUID UNIQUE DEFAULT gen_random_uuid(),
+  token UUID UNIQUE DEFAULT gen_random_uuid() NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Índice para la agenda
 CREATE INDEX IF NOT EXISTS idx_reservas_agenda ON public.reservas(reserva_fecha, hora_inicio);
+-- Índice para búsquedas rápidas por token
+CREATE INDEX IF NOT EXISTS idx_reservas_token ON public.reservas(token);
 
 -- Habilitar RLS
 ALTER TABLE public.reservas ENABLE ROW LEVEL SECURITY;

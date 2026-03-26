@@ -1,81 +1,58 @@
-// app/api/whatsapp/send-reminders/route.ts
 import { NextResponse } from 'next/server';
+import { createClient } from "@supabase/supabase-js";
+import { format, addDays } from 'date-fns';
 
-const META_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}`;
-
-async function sendMetaReminder(
-  to: string,
-  templateName: string,
-  token: string  // <-- ahora recibe token en vez de idTurno
-) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tudominio.com";
-  const linkConfirmacion = `${baseUrl}/reservas/${token}`;
-
-  return fetch(`${META_API_URL}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: to,
-      type: "template",
-      template: {
-        name: templateName,
-        language: { code: "es_AR" },
-        components: [
-          {
-            type: "button",
-            sub_type: "url",
-            index: "0",
-            parameters: [{ type: "text", text: token }] // <-- token como parámetro del botón
-          }
-        ]
-      }
-    })
-  });
-}
+import { enviarNotificacionWhatsApp } from "@/app/meta-actions";
 
 export async function GET(request: Request) {
+  // 1. Validar seguridad contra el CRON_SECRET
+  const authHeader = request.headers.get('authorization');
+
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new NextResponse('No autorizado', { status: 401 });
+  }
+
+  // 2. Crear cliente administrativo (Service Role) para saltar RLS
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   try {
-    const { createClient } = await import("@/utils/supabase/server");
-    const supabase = await createClient();
+    // 3. Calcular la fecha de mañana (24hs después de hoy)
+    const fechaMañana = format(addDays(new Date(), 1), 'yyyy-MM-dd');
 
-    // Buscar turnos de mañana que estén en estado 'reservado'
-    const manana = new Date();
-    manana.setDate(manana.getDate() + 1);
-    const fechaStr = manana.toISOString().split("T")[0];
-
+    // 4. Buscar reservas para mañana que estén en estado 'reservado'
     const { data: turnos, error } = await supabase
-      .from("reservas")
-      .select(`
-        id,
-        token,
-        hora_inicio,
-        estado,
-        pacientes (nombre, apellido, telefono)
-      `)
-      .eq("reserva_fecha", fechaStr)
-      .eq("estado", "reservado");
+      .from('reservas')
+      .select('id, paciente_id, estado')
+      .eq('reserva_fecha', fechaMañana)
+      .eq('estado', 'reservado');
 
-    if (error) throw new Error(error.message);
+    if (error) throw error;
+
     if (!turnos || turnos.length === 0) {
-      return NextResponse.json({ message: "Sin turnos para mañana." }, { status: 200 });
+      return NextResponse.json({ message: "No hay turnos para mañana" });
     }
 
-    const resultados = await Promise.allSettled(
-      turnos.map((turno) => {
-        const paciente = turno.pacientes as { telefono?: string } | null;
-        if (!paciente?.telefono || !turno.token) return Promise.resolve(null);
-        return sendMetaReminder(paciente.telefono, "recordatorio_de_cita", turno.token);
-      })
+    // 5. Enviar las notificaciones de recordatorio
+    const promesasEnvio = turnos.map((turno) => 
+      enviarNotificacionWhatsApp(turno.id, 'recordatorio')
     );
 
-    const enviados = resultados.filter(r => r.status === "fulfilled").length;
-    return NextResponse.json({ message: `Recordatorios enviados: ${enviados}` }, { status: 200 });
+    const resultados = await Promise.allSettled(promesasEnvio);
+
+    // 6. Log de resultados para monitoreo
+    console.log(`[Cron] Procesados ${turnos.length} recordatorios.`);
+
+    return NextResponse.json({ 
+      success: true, 
+      procesados: turnos.length 
+    });
 
   } catch (error: any) {
+    console.error("[Cron Error]:", error.message);
+    
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
