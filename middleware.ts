@@ -38,7 +38,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/whatsapp') ||
     request.nextUrl.pathname.startsWith('/terminos') ||
     request.nextUrl.pathname.startsWith('/privacidad') ||
-    request.nextUrl.pathname.startsWith('/instrucciones-eliminacion')
+    request.nextUrl.pathname.startsWith('/instrucciones-eliminacion') ||
+    request.nextUrl.pathname.startsWith('/reservas')
 
   // Proteger rutas: Si no hay usuario y NO es una ruta pública, al login
   if (!user && !isPublicRoute) {

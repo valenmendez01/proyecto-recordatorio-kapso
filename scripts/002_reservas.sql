@@ -7,6 +7,7 @@ CREATE TABLE public.reservas (
   hora_fin TIME NOT NULL,
   estado TEXT NOT NULL DEFAULT 'reservado' CHECK (estado IN ('reservado', 'confirmado', 'cancelado')),
   notas TEXT,
+  token UUID UNIQUE DEFAULT gen_random_uuid(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -3,7 +3,14 @@ import { NextResponse } from 'next/server';
 
 const META_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}`;
 
-async function sendMetaReminder(to: string, templateName: string, idTurno: string) {
+async function sendMetaReminder(
+  to: string,
+  templateName: string,
+  token: string  // <-- ahora recibe token en vez de idTurno
+) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tudominio.com";
+  const linkConfirmacion = `${baseUrl}/reservas/${token}`;
+
   return fetch(`${META_API_URL}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: {
@@ -22,7 +29,7 @@ async function sendMetaReminder(to: string, templateName: string, idTurno: strin
             type: "button",
             sub_type: "url",
             index: "0",
-            parameters: [{ type: "text", text: idTurno }]
+            parameters: [{ type: "text", text: token }] // <-- token como parámetro del botón
           }
         ]
       }
@@ -30,14 +37,44 @@ async function sendMetaReminder(to: string, templateName: string, idTurno: strin
   });
 }
 
-// ESTO ES LO QUE FALTA: El export del manejador para Next.js
 export async function GET(request: Request) {
   try {
-    // Aquí deberías agregar la lógica para buscar los turnos de la semana 
-    // en Supabase y llamar a sendReminder para cada uno.
-    
-    // Por ahora, devolvemos un éxito para que el Build pase:
-    return NextResponse.json({ message: "Proceso de recordatorios iniciado" }, { status: 200 });
+    const { createClient } = await import("@/utils/supabase/server");
+    const supabase = await createClient();
+
+    // Buscar turnos de mañana que estén en estado 'reservado'
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    const fechaStr = manana.toISOString().split("T")[0];
+
+    const { data: turnos, error } = await supabase
+      .from("reservas")
+      .select(`
+        id,
+        token,
+        hora_inicio,
+        estado,
+        pacientes (nombre, apellido, telefono)
+      `)
+      .eq("reserva_fecha", fechaStr)
+      .eq("estado", "reservado");
+
+    if (error) throw new Error(error.message);
+    if (!turnos || turnos.length === 0) {
+      return NextResponse.json({ message: "Sin turnos para mañana." }, { status: 200 });
+    }
+
+    const resultados = await Promise.allSettled(
+      turnos.map((turno) => {
+        const paciente = turno.pacientes as { telefono?: string } | null;
+        if (!paciente?.telefono || !turno.token) return Promise.resolve(null);
+        return sendMetaReminder(paciente.telefono, "recordatorio_de_cita", turno.token);
+      })
+    );
+
+    const enviados = resultados.filter(r => r.status === "fulfilled").length;
+    return NextResponse.json({ message: `Recordatorios enviados: ${enviados}` }, { status: 200 });
+
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

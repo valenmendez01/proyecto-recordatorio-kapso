@@ -132,6 +132,7 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
     if (error) {
       setMensajeError("Error al crear la reserva: " + error.message);
       setIsLoading(false);
+      
       return;
     }
 

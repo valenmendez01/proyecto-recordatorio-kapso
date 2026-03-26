@@ -19,7 +19,8 @@ export type ReservaUpdate = Database["public"]["Tables"]["reservas"]["Update"];
 export type PerfilForm = Partial<Omit<Perfil, "role">>;
 
 export type ReservaDraft = Partial<Omit<Reserva, "id" | "estado">> & {
-  reserva_hora?: string; 
+  reserva_hora?: string;
+  token?: string;
 };
 
 // --- ESTADOS Y CALENDARIO ---
@@ -34,4 +35,5 @@ export interface CalendarEvent {
   participants: string[];
   status: "reservado" | "confirmado" | "cancelado";
   description?: string | null;
+  token?: string;
 }
