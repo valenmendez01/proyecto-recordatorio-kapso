@@ -167,7 +167,7 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
   };
 
   return (
-    <Modal isOpen={open} placement="center" size={isMobile ? "xs" : "lg"} onOpenChange={onOpenChange}>
+    <Modal isOpen={open} placement="center" scrollBehavior="inside" size={isMobile ? "xs" : "lg"} onOpenChange={onOpenChange}>
       <ModalContent>
         {(onClose) => (
           <>

@@ -156,14 +156,14 @@ export default function TablaClientes() {
         );
       case "acciones":
         return (
-          <div className="flex flex-col md:flex-row items-center gap-2 justify-center">
+          <div className="flex items-center md:gap-2 justify-center">
             <Tooltip content="Editar">
-              <Button isIconOnly variant="light" className="w-5 h-5 md:w-10 md:h-10" onPress={() => { setEditingPaciente({ ...paciente }); onEditOpen(); }}>
+              <Button isIconOnly variant="light" className="w-7 h-7 min-w-0 p-0 md:w-9 md:h-9" onPress={() => { setEditingPaciente({ ...paciente }); onEditOpen(); }}>
                 <Pencil className="w-4 h-4 md:w-5 md:h-5 text-default-400" />
               </Button>
             </Tooltip>
             <Tooltip color="danger" content="Eliminar">
-              <Button isIconOnly variant="light" color="danger" className="w-5 h-5 md:w-10 md:h-10" onPress={() => { setPacienteAEliminar(paciente); onDeleteOpen(); }}>
+              <Button isIconOnly variant="light" color="danger" className="w-7 h-7 min-w-0 p-0 md:w-9 md:h-9" onPress={() => { setPacienteAEliminar(paciente); onDeleteOpen(); }}>
                 <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             </Tooltip>
@@ -179,6 +179,9 @@ export default function TablaClientes() {
       <Input
         isClearable
         className="w-full sm:max-w-[44%]"
+        classNames={{
+          input: "text-base"  // fuerza 16px, evita el zoom
+        }}
         placeholder="Buscar por nombre o DNI..."
         startContent={<Search size={18} />}
         value={filterValue}
@@ -261,10 +264,11 @@ export default function TablaClientes() {
               <Input label="Nombre" value={nuevoPaciente.nombre} onChange={e => setNuevoPaciente({...nuevoPaciente, nombre: e.target.value})} />
               <Input label="Apellido" value={nuevoPaciente.apellido} onChange={e => setNuevoPaciente({...nuevoPaciente, apellido: e.target.value})} />
             </div>
-            <Input label="DNI" value={nuevoPaciente.dni} onChange={e => setNuevoPaciente({...nuevoPaciente, dni: e.target.value})} />
+            <Input label="DNI" type="tel" value={nuevoPaciente.dni} onChange={e => setNuevoPaciente({...nuevoPaciente, dni: e.target.value})} />
             <Input 
-              label="Teléfono" 
+              label="Teléfono"
               placeholder="5492991234567"
+              type="tel"
               value={nuevoPaciente.telefono}
               description="Formato: 54 + 9 + característica sin 0 + número"
               isInvalid={nuevoPaciente.telefono !== "" && !PHONE_REGEX.test(nuevoPaciente.telefono)}
@@ -289,9 +293,10 @@ export default function TablaClientes() {
                   <Input label="Nombre" value={editingPaciente.nombre || ""} onChange={e => setEditingPaciente({...editingPaciente, nombre: e.target.value})} />
                   <Input label="Apellido" value={editingPaciente.apellido || ""} onChange={e => setEditingPaciente({...editingPaciente, apellido: e.target.value})} />
                 </div>
-                <Input label="DNI" value={editingPaciente.dni || ""} onChange={e => setEditingPaciente({...editingPaciente, dni: e.target.value})} />
+                <Input label="DNI" type="tel" value={editingPaciente.dni || ""} onChange={e => setEditingPaciente({...editingPaciente, dni: e.target.value})} />
                 <Input 
-                  label="Teléfono" 
+                  label="Teléfono"
+                  type="tel"
                   value={editingPaciente.telefono || ""} 
                   placeholder="5492991234567"
                   isInvalid={editingPaciente.telefono !== "" && !PHONE_REGEX.test(editingPaciente.telefono || "")}
