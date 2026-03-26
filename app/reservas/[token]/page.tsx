@@ -7,7 +7,7 @@ import ReservaAcciones from "./reserva-acciones";
 import { createClient } from "@/utils/supabase/server";
 
 interface Props {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 }
 
 export default async function ReservaPublicaPage({ params }: Props) {
@@ -57,7 +57,7 @@ export default async function ReservaPublicaPage({ params }: Props) {
         <ReservaAcciones
           estado={reserva.estado}
           expirado={expirado}
-          token={params.token}
+          token={token}
           yaProcesado={yaProcesado}
         />
       </div>
