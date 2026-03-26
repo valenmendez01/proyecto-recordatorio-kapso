@@ -49,13 +49,13 @@ export function CurrentTimeIndicator({
     >
       {isCurrentDay ? (
         <>
-          {/* Línea roja lisa con el punto para el día actual */}
-          <div className="size-2 rounded-full bg-red-500 shrink-0 -ml-1" />
-          <div className="h-0.5 bg-red-500 flex-1" />
+          {/* Línea azul lisa con el punto para el día actual */}
+          <div className="size-2 rounded-full bg-blue-600 shrink-0 -ml-1" />
+          <div className="h-0.5 bg-blue-600 flex-1" />
         </>
       ) : (
-        /* Línea roja punteada y tenue para los demás días de la semana */
-        <div className="border-t-2 border-dashed border-red-500/30 flex-1" />
+        /* Línea azul punteada y tenue para los demás días de la semana */
+        <div className="border-t-2 border-dashed border-blue-600/30 flex-1" />
       )}
     </div>
   );

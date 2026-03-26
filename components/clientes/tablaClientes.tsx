@@ -253,7 +253,7 @@ export default function TablaClientes() {
       </Table>
 
       {/* MODALES (Se mantienen igual para edición/creación) */}
-      <Modal isOpen={modalNuevo} placement="center" size={isMobile ? "xs" : "lg"} onOpenChange={setModalNuevo}>
+      <Modal isOpen={modalNuevo} placement={isMobile ? "bottom" : "center"} size={isMobile ? "xs" : "lg"} onOpenChange={setModalNuevo}>
         <ModalContent className="md:p-2">
           <ModalHeader className="md:text-xl">Registrar Nuevo Paciente</ModalHeader>
           <ModalBody className="gap-4">
@@ -279,7 +279,7 @@ export default function TablaClientes() {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={isEditOpen} placement="center" size={isMobile ? "xs" : "lg"} onOpenChange={onEditClose}>
+      <Modal isOpen={isEditOpen} placement={isMobile ? "bottom" : "center"} size={isMobile ? "xs" : "lg"} onOpenChange={onEditClose}>
         <ModalContent className="md:p-2">
           <ModalHeader className="md:text-xl">Editar Paciente</ModalHeader>
           <ModalBody className="gap-4">
