@@ -18,14 +18,18 @@ export async function GET(request: Request) {
   );
 
   try {
-    const ahora = new Date();
-    // Calculamos el rango de tiempo exactamente 24 horas adelante
-    const fechaMañana = format(addDays(ahora, 1), 'yyyy-MM-dd');
-    const horaInicioVentana = format(addDays(ahora, 1), 'HH:mm');
-    const horaFinVentana = format(addMinutes(addDays(ahora, 1), 30), 'HH:mm');
+    // 1. Obtenemos la hora actual en UTC y la ajustamos a Argentina (UTC-3)
+    const ahoraUTC = new Date();
+    const ahoraArg = new Date(ahoraUTC.getTime() - (3 * 60 * 60 * 1000));
+    
+    // 2. Calculamos la ventana para mañana basándonos en hora Argentina
+    const mañanaArg = addDays(ahoraArg, 1);
+    const fechaMañana = format(mañanaArg, 'yyyy-MM-dd');
+    const horaInicioVentana = format(mañanaArg, 'HH:mm');
+    const horaFinVentana = format(addMinutes(mañanaArg, 30), 'HH:mm');
 
-    // Buscamos turnos para mañana, en estado 'reservado', 
-    // cuya hora de inicio esté dentro de los próximos 30 minutos (mañana)
+    console.log(`Buscando turnos para ${fechaMañana} entre ${horaInicioVentana} y ${horaFinVentana}`);
+
     const { data: turnos, error } = await supabase
       .from('reservas')
       .select('id')
