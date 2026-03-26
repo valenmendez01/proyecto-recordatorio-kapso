@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { format } from "date-fns";
 import { I18nProvider } from "@react-aria/i18n";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
@@ -17,6 +16,8 @@ import {
 } from "@heroui/modal";
 import { parseDate, getLocalTimeZone, today, Time } from "@internationalized/date";
 import { Search, AlertCircle } from "lucide-react";
+import { useSWRConfig } from 'swr';
+import { format, endOfWeek } from "date-fns";
 
 import { useCalendarStore } from "../store/calendar-store";
 import { useIsMobile } from "../hooks/use-mobile";
@@ -32,7 +33,8 @@ interface CreateEventDialogProps {
 
 export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps) {
   const supabase = createClient();
-  const { goToDate, fetchEvents } = useCalendarStore();
+  const { mutate } = useSWRConfig();
+  const { goToDate, currentWeekStart } = useCalendarStore();
 
   // --- ESTADOS DEL FORMULARIO ---
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -152,7 +154,11 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
       
       if (res.error) console.error("Error enviando WhatsApp:", res.error);
       
-      await fetchEvents();
+      const startDate = format(currentWeekStart, "yyyy-MM-dd");
+      const endDate = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), "yyyy-MM-dd");
+      
+      mutate(['reservas-semana', startDate, endDate]); // Refresca la caché
+      
       if (date) goToDate(date);
       onOpenChange(false);
     }

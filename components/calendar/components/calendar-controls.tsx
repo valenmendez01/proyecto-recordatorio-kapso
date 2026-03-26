@@ -36,7 +36,6 @@ export function CalendarControls() {
     endHour,
     setStartHour,
     setEndHour,
-    isLoading,
   } = useCalendarStore();
 
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -105,13 +104,6 @@ export function CalendarControls() {
             />
           </PopoverContent>
         </Popover>
-
-        {/* Spinner de carga */}
-        {isLoading && !isMobile && (
-          <div className="flex items-center animate-in fade-in zoom-in duration-300">
-            <Spinner color="primary" size="md" variant="dots" />
-          </div>
-        )}
 
         <div className="hidden md:block ml-auto" />
 

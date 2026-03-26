@@ -1,19 +1,28 @@
 "use client";
 
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
 import { Button } from "@heroui/button";
 import { Plus } from "lucide-react";
+import useSWR from 'swr';
 
 import { useCalendarStore } from "../store/calendar-store";
 import { useIsMobile } from "../hooks/use-mobile";
 
 import { CreateEventDialog } from "./create-event-dialog";
 
+import { CalendarEvent } from "@/types/types";
+
 export function CalendarHeader() {
   const isMobile = useIsMobile();
-  const { currentWeekStart, events } = useCalendarStore(); // Obtener eventos del store
+  const { currentWeekStart } = useCalendarStore(); // Obtener eventos del store
+
+  const startDate = format(currentWeekStart, "yyyy-MM-dd");
+  const endDate = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  
+  const { data: events = [] } = useSWR<CalendarEvent[]>(['reservas-semana', startDate, endDate]);
+  const eventsList = events || [];
 
   // Filtrar eventos de HOY
   const today = new Date();

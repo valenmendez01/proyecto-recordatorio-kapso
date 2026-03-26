@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import { Drawer, DrawerContent, DrawerHeader, DrawerBody } from "@heroui/drawer";
 import { Button } from "@heroui/button";
@@ -18,11 +18,13 @@ import {
 import { Time } from "@internationalized/date";
 import { parseDate, getLocalTimeZone } from "@internationalized/date";
 import { Clock, User, FileText, Pencil, Trash2 } from "lucide-react";
+import { useSWRConfig } from 'swr';
+import { Divider } from "@heroui/divider";
 
 import { useCalendarStore } from "../store/calendar-store";
+
 import { createClient } from "@/utils/supabase/client";
 import { CalendarEvent } from "@/types/types";
-import { Divider } from "@heroui/divider";
 import { enviarNotificacionWhatsApp } from "@/app/meta-actions";
 
 interface EventSheetProps {
@@ -33,7 +35,8 @@ interface EventSheetProps {
 
 export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
   const supabase = createClient();
-  const { fetchEvents } = useCalendarStore();
+  const { mutate } = useSWRConfig();
+  const { currentWeekStart } = useCalendarStore();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editDate, setEditDate] = useState<Date | undefined>(undefined);
@@ -44,6 +47,12 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
   const [statusUpdating, setStatusUpdating] = useState<"confirmado" | "cancelado" | "reservado" | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const refreshCache = () => {
+    const startDate = format(currentWeekStart, "yyyy-MM-dd");
+    const endDate = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), "yyyy-MM-dd");
+    mutate(['reservas-semana', startDate, endDate]);
+  };
 
   // Al entrar en modo edición, cargamos los valores actuales
   const handleEnterEdit = () => {
@@ -105,7 +114,7 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
         await enviarNotificacionWhatsApp(event.id, 'actualizacion');
       }
       
-      await fetchEvents();
+      refreshCache();
       setIsEditing(false);
     } else {
       alert("Error al guardar: " + updateError.message);
@@ -125,7 +134,7 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
       .eq("id", event.id);
 
     if (!error) {
-      await fetchEvents();
+      refreshCache();
       onOpenChange(false);
     } else {
       alert("Error al actualizar: " + error.message);
@@ -145,7 +154,7 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
       .eq("id", event.id);
 
     if (!error) {
-      await fetchEvents(); // Recargamos el calendario
+      refreshCache();
       setIsDeleteModalOpen(false); // Cerramos el modal
       onOpenChange(false); // Cerramos el Drawer principal
     } else {
