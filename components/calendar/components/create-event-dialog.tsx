@@ -17,7 +17,7 @@ import {
 import { parseDate, getLocalTimeZone, today, Time } from "@internationalized/date";
 import { Search, AlertCircle } from "lucide-react";
 import { useSWRConfig } from 'swr';
-import { format, endOfWeek } from "date-fns";
+import { format, endOfWeek, startOfWeek } from "date-fns";
 
 import { useCalendarStore } from "../store/calendar-store";
 import { useIsMobile } from "../hooks/use-mobile";
@@ -25,6 +25,7 @@ import { useIsMobile } from "../hooks/use-mobile";
 import { createClient } from "@/utils/supabase/client";
 import { Paciente } from "@/types/types";
 import { enviarNotificacionWhatsApp } from "@/app/meta-actions";
+import { addToast } from "@heroui/toast";
 
 interface CreateEventDialogProps {
   open: boolean;
@@ -142,7 +143,7 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
       .single();
 
     if (insertError) {
-      setMensajeError("Error al crear la reserva: " + insertError.message);
+      addToast({ title: "Error al crear la reserva", description: insertError.message, color: "danger" });
       setIsLoading(false);
 
       return;
@@ -150,16 +151,39 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
 
     // Si llegamos aquí, la reserva se creó correctamente
     if (nuevaReserva) {
-      const res = await enviarNotificacionWhatsApp(nuevaReserva.id, 'reserva');
-      
-      if (res.error) console.error("Error enviando WhatsApp:", res.error);
-      
-      const startDate = format(currentWeekStart, "yyyy-MM-dd");
-      const endDate = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), "yyyy-MM-dd");
-      
-      mutate(['reservas-semana', startDate, endDate]); // Refresca la caché
-      
+      enviarNotificacionWhatsApp(nuevaReserva.id, 'reserva')
+        .then(res => {
+          if (res.error) addToast({ 
+            title: "Turno creado, pero no se pudo enviar el WhatsApp", 
+            description: res.error, 
+            color: "warning" 
+          });
+        });
+
       if (date) goToDate(date);
+
+      const newWeekStart = startOfWeek(date, { weekStartsOn: 1 });
+      const startDate = format(newWeekStart, "yyyy-MM-dd");
+      const endDate = format(endOfWeek(newWeekStart, { weekStartsOn: 1 }), "yyyy-MM-dd");
+
+      // Actualización optimista: agregamos el nuevo evento al cache directamente
+      const nuevoEvento = {
+        id: nuevaReserva.id,
+        title: `${clienteEncontrado.nombre} ${clienteEncontrado.apellido}`,
+        startTime: horaInicio.toString().slice(0, 5),
+        endTime: horaFin.toString().slice(0, 5),
+        date: fechaStr,
+        participants: [`${clienteEncontrado.nombre} ${clienteEncontrado.apellido}`],
+        status: "reservado" as const,
+        description: notas || "Sin notas",
+      };
+
+      mutate(
+        ['reservas-semana', startDate, endDate],
+        (current: any[] | undefined) => [...(current || []), nuevoEvento],
+        { revalidate: false } // No refetch, ya tenemos el dato completo
+      );
+
       onOpenChange(false);
     }
 

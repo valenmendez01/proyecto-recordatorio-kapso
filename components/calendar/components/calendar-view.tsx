@@ -12,6 +12,7 @@ import { CalendarHoursColumn } from "./calendar-hours-column";
 import { CalendarDayColumn } from "./calendar-day-column";
 import { HOUR_HEIGHT } from "./calendar-utils";
 import { CalendarEvent } from "@/types/types";
+import { useSWRConfig } from 'swr';
 
 const supabase = createClient();
 
@@ -20,6 +21,8 @@ export function CalendarView() {
     goToNextWeek, goToPreviousWeek, getWeekDays, 
     currentWeekStart, statusFilter, startHour 
   } = useCalendarStore();
+
+  const { mutate: globalMutate } = useSWRConfig();
 
   const weekDays = getWeekDays();
   const hoursScrollRef = useRef<HTMLDivElement>(null);
@@ -36,6 +39,7 @@ export function CalendarView() {
   const { data: events, isLoading, mutate } = useSWR<CalendarEvent[]>(
     ['reservas-semana', startDate, endDate],
     async () => {
+      console.log("=== FETCHER ejecutándose ===", startDate, endDate);
       const { data, error } = await supabase
         .from("reservas")
         .select(`id, reserva_fecha, hora_inicio, hora_fin, estado, notas, paciente:pacientes(nombre, apellido)`)
@@ -66,27 +70,35 @@ export function CalendarView() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'reservas' },
         (payload) => {
-          console.log("Cambio detectado:", payload);
+          console.log("=== REALTIME eventType ===", payload.eventType);
+          console.log("=== REALTIME payload.new ===", payload.new);
 
           if (payload.eventType === 'UPDATE') {
-            const updated = payload.new;
-
-            // Actualiza el cache local con el dato del payload, sin refetch
             mutate(
               (currentEvents: CalendarEvent[] | undefined) => {
+                console.log("=== CACHE EN UPDATE ===", currentEvents);
                 if (!currentEvents) return currentEvents;
-                
                 return currentEvents.map((e) =>
-                  e.id === updated.id
-                    ? { ...e, status: updated.estado, description: updated.notas }
+                  e.id === payload.new.id
+                    ? { ...e, status: payload.new.estado, description: payload.new.notas }
                     : e
                 );
               },
-              { revalidate: false } // No refetch, el payload ya tiene la verdad
+              { revalidate: false }
             );
           } else {
-            // Para INSERT o DELETE, sí revalidar
-            mutate(undefined, { revalidate: true });
+            console.log("=== INSERT/DELETE — startDate en closure ===", startDate);
+            console.log("=== INSERT/DELETE — endDate en closure ===", endDate);
+            try {
+              globalMutate(
+                (key: unknown) => Array.isArray(key) && key[0] === 'reservas-semana',
+                undefined,
+                { revalidate: true }
+              );
+              console.log("=== globalMutate ejecutado OK ===");
+            } catch (err) {
+              console.error("=== ERROR en globalMutate ===", err);
+            }
           }
         }
       )
@@ -95,7 +107,7 @@ export function CalendarView() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [mutate]);
+  }, [mutate, globalMutate, startDate, endDate]);
 
   // 3. Filtrado local de eventos
   const filteredEvents = useMemo(() => {

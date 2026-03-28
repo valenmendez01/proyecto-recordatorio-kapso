@@ -8,6 +8,7 @@ import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { DatePicker } from "@heroui/date-picker";
 import { TimeInput } from "@heroui/date-input";
+import { addToast } from "@heroui/toast";
 import {
   Modal,
   ModalContent,
@@ -59,14 +60,17 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
   const handleEnterEdit = () => {
     if (!event) return;
     const [y, m, d] = event.date.split("-").map(Number);
+
     setEditDate(new Date(y, m - 1, d));
     
     // Parsea la hora de inicio
     const [hStart, mStart] = event.startTime.split(":").map(Number);
+
     setEditHora(new Time(hStart, mStart));
 
     // Parsea la hora de fin
     const [hEnd, mEnd] = event.endTime.split(":").map(Number);
+    
     setEditHoraFin(new Time(hEnd, mEnd));
 
     setEditNotes(event.description || "");
@@ -118,7 +122,7 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
       refreshCache();
       setIsEditing(false);
     } else {
-      alert("Error al guardar: " + updateError.message);
+      addToast({ title: "Error al guardar", description: updateError.message, color: "danger" });
     }
 
     setUpdating(false);
@@ -141,7 +145,7 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
       await mutate(['reservas-semana', startDate, endDate]);
       onOpenChange(false);
     } else {
-      alert("Error al actualizar: " + error.message);
+      addToast({ title: "Error al actualizar", description: error.message, color: "danger" });
     }
     
     setStatusUpdating(null); // Limpiamos el estado de carga
@@ -162,10 +166,10 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
       const endDate = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), "yyyy-MM-dd");
 
       await mutate(['reservas-semana', startDate, endDate]);
-      onOpenChange(false);
+      setIsDeleteModalOpen(false); // ← cierra el modal de confirmación
+      onOpenChange(false);         // ← cierra el drawer
     } else {
-      // Si quieres, luego podemos cambiar este alert por un Toast/Sonner
-      alert("Error al eliminar el turno: " + error.message); 
+      addToast({ title: "Error al eliminar el turno", description: error.message, color: "danger" }); 
     }
     
     setIsDeleting(false);
@@ -180,7 +184,7 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
           {(onClose) => (
             <>
               <DrawerHeader className="px-6 py-6">
-                <h2 className="text-xl font-bold">{isEditing ? "Editar Turno" : "Detalle de Reserva"}</h2>
+                <h2 className="text-xl font-bold">{isEditing ? "Editar Turno" : "Detalle del Turno"}</h2>
               </DrawerHeader>
 
               <Divider orientation="horizontal" />
@@ -335,7 +339,7 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
         </DrawerContent>
       </Drawer>
 
-      <Modal isOpen={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen} size="sm" placement="center">
+      <Modal classNames={{ wrapper: "z-[300]" }} isOpen={isDeleteModalOpen} placement="center" size="sm" onOpenChange={setIsDeleteModalOpen}>
         <ModalContent>
           {(onClose) => (
             <>
