@@ -523,3 +523,27 @@ export async function enviarNotificacionWhatsApp(reservaId: string, tipo: 'reser
 
   return response.ok ? { success: true } : { error: data.error?.message || "Error en el envío" };
 }
+
+export async function verificarYSuscribirWaba() {
+  const supabase = await createClient();
+  const { data: perfil } = await supabase
+    .from("perfiles")
+    .select("whatsapp_customer_id, whatsapp_access_token")
+    .limit(1)
+    .single();
+
+  if (!perfil?.whatsapp_customer_id || !perfil?.whatsapp_access_token) return;
+
+  // Verificar si ya está suscrita
+  const res = await fetch(
+    `https://graph.facebook.com/${process.env.NEXT_PUBLIC_WHATSAPP_API_VERSION}/${perfil.whatsapp_customer_id}/subscribed_apps`,
+    { headers: { Authorization: `Bearer ${perfil.whatsapp_access_token}` } }
+  );
+  const data = await res.json();
+
+  // Si data está vacío, suscribir
+  if (data.data?.length === 0) {
+    console.warn("[verificarWaba] No hay suscripción activa. Re-suscribiendo...");
+    await subscribeAppToWaba(perfil.whatsapp_customer_id, perfil.whatsapp_access_token);
+  }
+}

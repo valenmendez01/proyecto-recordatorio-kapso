@@ -151,6 +151,12 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
 
     // Si llegamos aquí, la reserva se creó correctamente
     if (nuevaReserva) {
+      addToast({ 
+        title: "¡Cita agendada!", 
+        description: `El turno para ${clienteEncontrado.nombre} ${clienteEncontrado.apellido} se creó con éxito.`, 
+        color: "success" 
+      });
+      
       enviarNotificacionWhatsApp(nuevaReserva.id, 'reserva')
         .then(res => {
           if (res.error) addToast({ 

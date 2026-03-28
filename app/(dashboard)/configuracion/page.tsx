@@ -5,7 +5,7 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { AlertCircle, CheckCircle2, XCircle, Zap } from "lucide-react";
-import { completeOnboarding, enviarPlantillasARevision } from "@/app/meta-actions";
+import { completeOnboarding, enviarPlantillasARevision, verificarYSuscribirWaba } from "@/app/meta-actions";
 import { createClient } from "@/utils/supabase/client";
 import { addToast } from "@heroui/toast";
 import { Alert } from "@heroui/alert";
@@ -102,12 +102,18 @@ export default function ConfigPage() {
     "whatsapp-status",
     async () => {
       const { data: { user } } = await supabase.auth.getUser();
+
       if (!user) return "disconnected";
       const { data } = await supabase
         .from("perfiles")
         .select("whatsapp_status")
         .eq("id", user.id)
         .maybeSingle();
+      
+      if (data?.whatsapp_status === "connected") {
+        await verificarYSuscribirWaba();
+      }
+      
       return data?.whatsapp_status === "connected" ? "connected" : "disconnected";
     },
     { revalidateOnFocus: false } // 👈 clave: no revalida al volver al tab
