@@ -93,8 +93,17 @@ export function CalendarView() {
           } else {
             console.log("=== INSERT/DELETE — forzando refetch ===");
             setTimeout(() => {
+              console.log("=== CACHE KEYS antes del mutate ===", 
+                (globalMutate as any)._cache ? 
+                [...(globalMutate as any)._cache.keys()] : 
+                "no accesible"
+              );
               globalMutate(
-                (key: unknown) => Array.isArray(key) && key[0] === 'reservas-semana',
+                (key: unknown) => {
+                  const matches = Array.isArray(key) && key[0] === 'reservas-semana';
+                  console.log("=== evaluando key ===", key, "matches:", matches);
+                  return matches;
+                },
                 undefined,
                 { revalidate: true }
               );
