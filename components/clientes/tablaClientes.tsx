@@ -96,9 +96,12 @@ export default function TablaClientes() {
     const { error } = await supabase.from("pacientes").insert([nuevoPaciente]);
 
     if (!error) {
-      mutate(); // Notifica a SWR que los datos cambiaron
+      addToast({ title: "Paciente registrado", description: "El paciente se guardó correctamente.", color: "success" });
+      mutate(); 
       setModalNuevo(false);
       setNuevoPaciente({ dni: "", nombre: "", apellido: "", telefono: "" });
+    } else {
+      addToast({ title: "Error", description: "No se pudo registrar al paciente.", color: "danger" }); //
     }
   };
 
@@ -107,8 +110,9 @@ export default function TablaClientes() {
     const { error } = await supabase.from("pacientes").delete().eq("id", pacienteAEliminar.id);
 
     if (error) {
-      addToast({ title: "Error", description: error.message, color: "danger" });
+      addToast({ title: "Error", description: error.message, color: "danger" }); //
     } else {
+      addToast({ title: "Paciente eliminado", description: "El registro ha sido borrado.", color: "success" });
       mutate();
       onDeleteClose();
     }
@@ -132,8 +136,11 @@ export default function TablaClientes() {
       .eq("id", editingPaciente.id);
 
     if (!error) {
+      addToast({ title: "Cambios guardados", description: "La información se actualizó con éxito.", color: "success" });
       mutate();
       onEditClose();
+    } else {
+      addToast({ title: "Error", description: "Hubo un problema al actualizar los datos.", color: "danger" });
     }
   };
 
