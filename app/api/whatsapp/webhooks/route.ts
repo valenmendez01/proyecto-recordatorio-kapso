@@ -251,10 +251,17 @@ export async function POST(req: NextRequest) {
       for (const statusUpdate of value.statuses ?? []) {
         const { id: messageId, status, timestamp, recipient_id, errors } = statusUpdate;
 
-        await supabase
-          .from("notificaciones_log")
-          .update({ estado: status })
-          .eq("meta_message_id", messageId);
+        if (status === "failed") {
+          // Intentamos actualizar el log existente (si lo hubieras guardado al enviar)
+          // O podrías insertar uno nuevo si tienes el ID vinculado
+          await supabase
+            .from("notificaciones_log")
+            .update({ 
+              estado: "failed", 
+              mensaje_error: errors?.[0]?.title || "Error de entrega" 
+            })
+            .eq("meta_message_id", messageId);
+        }
 
         switch (status) {
           case "sent":

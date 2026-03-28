@@ -510,14 +510,15 @@ export async function enviarNotificacionWhatsApp(reservaId: string, tipo: 'reser
 
   const data = await response.json();
 
-  // INSERTAR LOG
   await supabase.from("notificaciones_log").insert({
     reserva_id: reservaId,
     paciente_nombre: `${paciente.nombre} ${paciente.apellido}`,
     tipo: tipo,
-    estado: response.ok ? "success" : "error",
-    mensaje_error: response.ok ? null : (data.error?.message || "Error desconocido"),
-    meta_message_id: data.messages?.[0]?.id || null
+    estado: response.ok ? "sent" : "failed",
+    meta_message_id: data.messages?.[0]?.id ?? null, // presente solo si response.ok
+    mensaje_error: response.ok
+      ? null
+      : data.error?.message || "Error síncrono de Meta",
   });
 
   return response.ok ? { success: true } : { error: data.error?.message || "Error en el envío" };
