@@ -12,12 +12,10 @@ import { CalendarHoursColumn } from "./calendar-hours-column";
 import { CalendarDayColumn } from "./calendar-day-column";
 import { HOUR_HEIGHT } from "./calendar-utils";
 import { CalendarEvent } from "@/types/types";
-import { useSWRConfig } from 'swr';
 
 const supabase = createClient();
 
 const fetchReservas = async (startDate: string, endDate: string): Promise<CalendarEvent[]> => {
-  console.log("=== FETCHER ejecutándose ===", startDate, endDate);
   const { data, error } = await supabase
     .from("reservas")
     .select(`id, reserva_fecha, hora_inicio, hora_fin, estado, notas, paciente:pacientes(nombre, apellido)`)
@@ -45,8 +43,6 @@ export function CalendarView() {
     currentWeekStart, statusFilter, startHour 
   } = useCalendarStore();
 
-  const { mutate: globalMutate } = useSWRConfig();
-
   const weekDays = getWeekDays();
   const hoursScrollRef = useRef<HTMLDivElement>(null);
   const daysScrollRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -73,14 +69,11 @@ export function CalendarView() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'reservas' },
         (payload) => {
-          console.log("=== REALTIME eventType ===", payload.eventType);
-          console.log("=== REALTIME payload.new ===", payload.new);
-
           if (payload.eventType === 'UPDATE') {
             mutate(
               (currentEvents: CalendarEvent[] | undefined) => {
-                console.log("=== CACHE EN UPDATE ===", currentEvents);
                 if (!currentEvents) return currentEvents;
+
                 return currentEvents.map((e) =>
                   e.id === payload.new.id
                     ? { ...e, status: payload.new.estado, description: payload.new.notas }
@@ -90,10 +83,9 @@ export function CalendarView() {
               { revalidate: false }
             );
           } else {
-            console.log("=== INSERT/DELETE — refetch directo ===");
             setTimeout(async () => {
               const nuevosEventos = await fetchReservas(startDate, endDate);
-              console.log("=== datos frescos obtenidos ===", nuevosEventos.length);
+
               mutate(nuevosEventos, { revalidate: false });
             }, 200);
           }
@@ -104,7 +96,7 @@ export function CalendarView() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [mutate, globalMutate, startDate, endDate]);
+  }, [mutate, startDate, endDate]);
 
   // 3. Filtrado local de eventos
   const filteredEvents = useMemo(() => {
