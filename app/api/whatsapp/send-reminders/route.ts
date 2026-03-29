@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from "@supabase/supabase-js";
 import { format, addDays, addMinutes } from 'date-fns';
 
-import { enviarNotificacionWhatsApp } from "@/app/meta-actions";
+import { enviarNotificacionWhatsApp } from "@/app/actions/meta-actions";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');

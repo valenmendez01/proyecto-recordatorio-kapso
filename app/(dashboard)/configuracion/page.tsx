@@ -5,7 +5,7 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { AlertCircle, CheckCircle2, XCircle, Zap } from "lucide-react";
-import { completeOnboarding, enviarPlantillasARevision, verificarYSuscribirWaba } from "@/app/meta-actions";
+import { completeOnboarding, enviarPlantillasARevision, verificarYSuscribirWaba } from "@/app/actions/meta-actions";
 import { createClient } from "@/utils/supabase/client";
 import { addToast } from "@heroui/toast";
 import { Alert } from "@heroui/alert";

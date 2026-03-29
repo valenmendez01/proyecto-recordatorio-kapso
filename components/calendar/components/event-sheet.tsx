@@ -26,7 +26,7 @@ import { useCalendarStore } from "../store/calendar-store";
 
 import { createClient } from "@/utils/supabase/client";
 import { CalendarEvent } from "@/types/types";
-import { enviarNotificacionWhatsApp } from "@/app/meta-actions";
+import { enviarNotificacionWhatsApp } from "@/app/actions/meta-actions";
 import { actualizarReservaAction, eliminarReservaAction } from "@/app/actions/reservas-actions";
 
 interface EventSheetProps {

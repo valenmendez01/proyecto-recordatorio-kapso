@@ -5,7 +5,7 @@ import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { LockIcon, MailIcon } from "lucide-react"; // Cambiado UserIcon por MailIcon
-import { login } from "@/app/auth-actions";
+import { login } from "@/app/actions/auth-actions";
 import { title } from "@/components/primitives";
 
 export default function LoginPage() {

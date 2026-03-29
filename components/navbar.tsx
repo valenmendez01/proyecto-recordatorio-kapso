@@ -19,7 +19,7 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { ChartNoAxesColumn, LogOut } from "lucide-react";
 import { Divider } from "@heroui/divider";
 import { Button } from "@heroui/button";
-import { logout } from "@/app/auth-actions";
+import { logout } from "@/app/actions/auth-actions";
 
 export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

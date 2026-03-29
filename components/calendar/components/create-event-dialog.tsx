@@ -24,7 +24,7 @@ import { useIsMobile } from "../hooks/use-mobile";
 
 import { createClient } from "@/utils/supabase/client";
 import { Paciente } from "@/types/types";
-import { enviarNotificacionWhatsApp } from "@/app/meta-actions";
+import { enviarNotificacionWhatsApp } from "@/app/actions/meta-actions";
 import { crearReservaAction } from "@/app/actions/reservas-actions";
 
 
