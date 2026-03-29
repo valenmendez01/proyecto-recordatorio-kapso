@@ -48,7 +48,7 @@ export function CalendarView() {
   const daysScrollRefs = useRef<(HTMLDivElement | null)[]>([]);
   const hasScrolledRef = useRef(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   // 1. Configuración de SWR para Caching
@@ -76,7 +76,14 @@ export function CalendarView() {
 
                 return currentEvents.map((e) =>
                   e.id === payload.new.id
-                    ? { ...e, status: payload.new.estado, description: payload.new.notas }
+                    ? {
+                        ...e,
+                        date: payload.new.reserva_fecha,          // nombre de columna Supabase
+                        startTime: payload.new.hora_inicio.slice(0, 5),
+                        endTime: payload.new.hora_fin.slice(0, 5),
+                        status: payload.new.estado,
+                        description: payload.new.notas,
+                      }
                     : e
                 );
               },
@@ -107,16 +114,26 @@ export function CalendarView() {
   // Agrupar por día para el renderizado
   const eventsByDay = useMemo(() => {
     const grouped: Record<string, CalendarEvent[]> = {};
+
     weekDays.forEach((day) => {
       const dayStr = format(day, "yyyy-MM-dd");
+
       grouped[dayStr] = filteredEvents.filter((e) => e.date === dayStr);
     });
+
     return grouped;
   }, [weekDays, filteredEvents]);
+
+  // Derivado del cache — se actualiza automáticamente con mutate/Realtime
+  const selectedEvent = useMemo(
+    () => filteredEvents.find((e) => e.id === selectedEventId) ?? null,
+    [filteredEvents, selectedEventId]
+  );
 
   // --- Lógica de UI (Reloj y Scroll se mantienen igual) ---
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -145,7 +162,14 @@ export function CalendarView() {
 
   return (
     <>
-      <EventSheet event={selectedEvent} open={sheetOpen} onOpenChange={setSheetOpen} />
+      <EventSheet 
+        event={selectedEvent} 
+        open={sheetOpen} 
+        onOpenChange={(open) => {
+          setSheetOpen(open);
+          if (!open) setSelectedEventId(null);
+        }} 
+      />
       <div className="flex flex-col h-full overflow-x-auto w-full">
         <CalendarWeekHeader weekDays={weekDays} onNextWeek={goToNextWeek} onPreviousWeek={goToPreviousWeek} />
         <div className="flex min-w-full w-max">
@@ -160,7 +184,7 @@ export function CalendarView() {
               isTodayInWeek={weekDays.some(d => format(d, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd"))}
               scrollRef={(el) => { daysScrollRefs.current[dayIndex] = el; }}
               today={new Date()}
-              onEventClick={(ev) => { setSelectedEvent(ev); setSheetOpen(true); }}
+              onEventClick={(ev) => { setSelectedEventId(ev.id); setSheetOpen(true); }}
               onScroll={handleDayScroll}
             />
           ))}

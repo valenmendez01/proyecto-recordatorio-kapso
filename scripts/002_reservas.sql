@@ -31,3 +31,6 @@ CREATE POLICY "Admin edita reservas"
 
 CREATE POLICY "Admin borra reservas" 
   ON public.reservas FOR DELETE USING (es_admin());
+
+-- HABILIAR REALTIME para la tabla de reservas
+ALTER TABLE public.reservas ENABLE REPLICATION;

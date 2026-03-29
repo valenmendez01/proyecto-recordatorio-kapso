@@ -188,6 +188,7 @@ export default function TablaClientes() {
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
       <Input
         isClearable
+        radius="full"
         className="w-full sm:max-w-[44%]"
         classNames={{
           input: "text-base"  // fuerza 16px, evita el zoom
@@ -202,6 +203,7 @@ export default function TablaClientes() {
         <Select
           className="w-24"
           labelPlacement="outside"
+          radius="full"
           selectedKeys={[String(rowsPerPage)]}
           onChange={(e) => setRowsPerPage(Number(e.target.value))}
           size="sm"
@@ -211,7 +213,7 @@ export default function TablaClientes() {
           <SelectItem key="10">10</SelectItem>
           <SelectItem key="15">15</SelectItem>
         </Select>
-          <Button color="primary" startContent={<Plus size={16} />} onPress={() => setModalNuevo(true)} className="text-xs px-2 md:text-sm md:px-4">
+          <Button color="primary" radius="full" startContent={<Plus size={16} />} onPress={() => setModalNuevo(true)} className="text-xs px-2 md:text-sm md:px-4">
             <span className="tracking-wider">Nuevo</span>
           </Button>
       </div>
@@ -223,6 +225,7 @@ export default function TablaClientes() {
       <Pagination
         isCompact
         showControls
+        radius="full"
         color="primary"
         page={page}
         total={pages}

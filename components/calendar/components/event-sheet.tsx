@@ -50,13 +50,6 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [sendingReminder, setSendingReminder] = useState(false);
 
-  const refreshCache = () => {
-    const startDate = format(currentWeekStart, "yyyy-MM-dd");
-    const endDate = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), "yyyy-MM-dd");
-
-    mutate(['reservas-semana', startDate, endDate]);
-  };
-
   // Al entrar en modo edición, cargamos los valores actuales
   const handleEnterEdit = () => {
     if (!event) return;
@@ -125,8 +118,8 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
         description: "Los cambios se guardaron correctamente.", 
         color: "success" 
       });
-      
-      refreshCache();
+
+      // No llamar a mutate acá. Realtime ya va a actualizar el cache.
       setIsEditing(false);
     } else {
       addToast({ title: "Error al actualizar", description: updateError.message, color: "danger" });

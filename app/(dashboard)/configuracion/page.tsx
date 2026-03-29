@@ -470,6 +470,7 @@ export default function ConfigPage() {
               isLoading={enviandoPlantillas}
               isDisabled={plantillasEnviadas}
               onPress={handleEnviarPlantillas}
+              radius="full"
               className="self-start"
             >
               {plantillasEnviadas ? "Plantillas enviadas a revisión" : "Enviar plantillas a revisión"}
