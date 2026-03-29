@@ -2,10 +2,16 @@ import { notFound } from "next/navigation";
 import { format, parseISO, subHours } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardBody } from "@heroui/card";
+import { createClient } from "@supabase/supabase-js";
 
 import ReservaAcciones from "./reserva-acciones";
 
-import { createClient } from "@/utils/supabase/server";
+function createServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -13,7 +19,7 @@ interface Props {
 
 export default async function ReservaPublicaPage({ params }: Props) {
   const { token } = await params;
-  const supabase = await createClient();
+  const supabase = await createServiceClient();
 
   const { data: reserva, error } = await supabase
     .from("reservas")
@@ -38,7 +44,8 @@ export default async function ReservaPublicaPage({ params }: Props) {
   const expirado = ahora >= limiteExpiracion;
   const yaProcesado = reserva.estado !== "reservado";
 
-  const paciente = reserva.pacientes as { nombre: string; apellido: string } | null;
+  const pacientesData = reserva.pacientes as any;
+  const paciente = Array.isArray(pacientesData) ? pacientesData[0] : pacientesData;
   const fechaFormateada = format(fechaTurno, "EEEE d 'de' MMMM 'a las' HH:mm 'hs'", { locale: es });
 
   return (
