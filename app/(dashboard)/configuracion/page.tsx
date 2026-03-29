@@ -291,7 +291,7 @@ export default function ConfigPage() {
   }
 
   const [page, setPage] = useState(1);
-  const rowsPerPage = 10;
+  const rowsPerPage = 5;
   const pages = Math.ceil((logsData?.length || 0) / rowsPerPage);
 
   const items = useMemo(() => {
@@ -486,7 +486,7 @@ export default function ConfigPage() {
             </div>
 
             <Card className="bg-content1">
-              <CardBody className="p-0"> {/* P-0 para que la tabla llegue a los bordes */}
+              <CardBody className="p-2 h-[350px]">
                 <Table 
                   aria-label="Tabla de errores de envío"
                   removeWrapper // Da un aspecto más integrado dentro del Card
@@ -496,6 +496,7 @@ export default function ConfigPage() {
                         <Pagination
                           isCompact
                           showControls
+                          showShadow
                           color="primary"
                           page={page}
                           total={pages}

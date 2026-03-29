@@ -32,7 +32,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
     }}>
       <HeroUIProvider navigate={router.push}>
         <NextThemesProvider {...themeProps}>
-          <ToastProvider />
+          <ToastProvider regionProps={{ className: "!z-[500]" }}/>
           {children}
         </NextThemesProvider>
       </HeroUIProvider>

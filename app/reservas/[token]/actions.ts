@@ -10,7 +10,8 @@ export async function confirmarReserva(token: string) {
   await supabase
     .from("reservas")
     .update({ estado: "confirmado" })
-    .eq("token", token);
+    .eq("token", token)
+    .eq("estado", "reservado");
 
   revalidatePath(`/reservas/${token}`);
 }
@@ -21,7 +22,8 @@ export async function cancelarReserva(token: string) {
   await supabase
     .from("reservas")
     .update({ estado: "cancelado" })
-    .eq("token", token);
+    .eq("token", token)
+    .eq("estado", "reservado");
 
   revalidatePath(`/reservas/${token}`);
 }

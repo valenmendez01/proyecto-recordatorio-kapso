@@ -1,5 +1,6 @@
 "use client";
 
+import { ScrollShadow } from "@heroui/scroll-shadow";
 import { useCalendarStore } from "../store/calendar-store"; // Importar store
 
 import { HOURS_24, HOUR_HEIGHT } from "./calendar-utils";

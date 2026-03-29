@@ -12,4 +12,4 @@ CREATE TABLE public.notificaciones_log (
 -- Habilitar RLS (Solo lectura para el admin)
 ALTER TABLE public.notificaciones_log ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admin ve logs" ON public.notificaciones_log FOR SELECT USING (es_admin());
-CREATE POLICY "Service role inserta logs" ON public.notificaciones_log FOR INSERT WITH CHECK (true);
+CREATE POLICY "Service role inserta logs" ON public.notificaciones_log FOR INSERT WITH CHECK (es_admin());

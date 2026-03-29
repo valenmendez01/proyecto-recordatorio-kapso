@@ -12,6 +12,7 @@ import { EventCard } from "./event-card";
 import { CurrentTimeIndicator } from "./current-time-indicator";
 
 import { CalendarEvent } from "@/types/types";
+import { ScrollShadow } from "@heroui/scroll-shadow";
 
 interface CalendarDayColumnProps {
   day: Date;

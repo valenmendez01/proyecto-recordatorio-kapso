@@ -12,6 +12,7 @@ import { CalendarHoursColumn } from "./calendar-hours-column";
 import { CalendarDayColumn } from "./calendar-day-column";
 import { HOUR_HEIGHT } from "./calendar-utils";
 import { CalendarEvent } from "@/types/types";
+import { ScrollShadow } from "@heroui/scroll-shadow";
 
 const supabase = createClient();
 

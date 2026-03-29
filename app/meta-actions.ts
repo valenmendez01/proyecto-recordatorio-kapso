@@ -56,7 +56,7 @@ export async function handleEmbeddedSignupEvent(payload: any) {
  * PASO 1: Intercambiar el código por un Token Empresarial (Business Token)
  *
  */
-export async function exchangeCodeForBusinessToken(code: string) {
+async function exchangeCodeForBusinessToken(code: string) {
   const appId = process.env.NEXT_PUBLIC_META_APP_ID;
   const appSecret = process.env.META_APP_SECRET;
   const apiVersion = process.env.NEXT_PUBLIC_WHATSAPP_API_VERSION;
@@ -103,7 +103,7 @@ export async function exchangeCodeForBusinessToken(code: string) {
  * PASO 2: Suscribirse a los webhooks en la WABA del cliente
  *
  */
-export async function subscribeAppToWaba(wabaId: string, businessToken: string) {
+async function subscribeAppToWaba(wabaId: string, businessToken: string) {
   const url = `${BASE_URL}/${wabaId}/subscribed_apps`;
 
   const res = await fetch(url, {
