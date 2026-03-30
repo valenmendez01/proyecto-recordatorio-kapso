@@ -189,7 +189,7 @@ export function EventSheet({ event, open, onOpenChange }: EventSheetProps) {
       addToast({ 
         title: "¡Enviado!", 
         description: "El recordatorio de WhatsApp se envió correctamente.", 
-        color: "success" 
+        color: "primary" 
       });
     } else {
       addToast({ 

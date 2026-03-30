@@ -1,10 +1,10 @@
-import { notFound } from "next/navigation";
 import { format, parseISO, subHours } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardBody } from "@heroui/card";
 import { createClient } from "@supabase/supabase-js";
 
 import ReservaAcciones from "./reserva-acciones";
+import { AlertTriangle } from "lucide-react";
 
 function createServiceClient() {
   return createClient(
@@ -34,7 +34,27 @@ export default async function ReservaPublicaPage({ params }: Props) {
     .eq("token", token)
     .single();
 
-  if (error || !reserva) return notFound();
+  // --- LÓGICA PARA RESERVAS ELIMINADAS ---
+  if (error || !reserva) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full">
+          <CardBody className="p-8 flex flex-col items-center text-center gap-6">
+            <div className="p-4 rounded-full bg-danger-50 text-danger">
+              <AlertTriangle size={40} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <h1 className="text-xl font-bold text-foreground">Turno no encontrado</h1>
+              <p className="text-default-500">
+                Esta reserva ha sido eliminada o el enlace es incorrecto. 
+                Por favor, <strong>consulte directamente con la odontóloga</strong> para verificar su turno.
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      </main>
+    );
+  }
 
   // --- LÓGICA DE EXPIRACIÓN (en el servidor) ---
   const fechaTurnoISO = `${reserva.reserva_fecha}T${reserva.hora_inicio}`;

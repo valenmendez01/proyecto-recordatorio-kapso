@@ -27,4 +27,4 @@ CREATE POLICY "Profesional gestiona su propia agenda"
   WITH CHECK (es_admin() AND auth.uid() = perfil_id);
 
 -- HABILIAR REALTIME para la tabla de reservas
-ALTER TABLE public.reservas ENABLE REPLICATION;
+-- Ir al table editor y presionar el boton para habiliatarlo

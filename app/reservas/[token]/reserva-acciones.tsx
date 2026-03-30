@@ -16,7 +16,6 @@ interface Props {
 export default function ReservaAcciones({ token, estado, expirado, yaProcesado }: Props) {
   const [isPending, startTransition] = useTransition();
   const [loadingAction, setLoadingAction] = useState<"confirmar" | "cancelar" | null>(null);
-  // ✅ Estado local optimista: evita que el server rerender tarde en mostrar el nuevo estado
   const [estadoLocal, setEstadoLocal] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
